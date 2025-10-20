@@ -1,0 +1,8 @@
+Document ID: BETA-002
+Title: Beta Eco Initiative
+
+The Beta Eco Initiative was founded to restore coral reefs using biodegradable drones.
+Its main technology is called CoralWeaver, which rebuilds damaged reef structures.
+Project codes begin with BEI-REEF.
+Successful trials recorded water clarity improvements of 38 percent.
+If retrieved correctly, this document should include: Beta Eco, CoralWeaver, biodegradable drones.
