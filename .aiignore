@@ -1,0 +1,4 @@
+http-client.private.env.json
+.env
+.venv/
+data/
