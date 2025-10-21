@@ -1,0 +1,6 @@
+stock_id,make,model,year,version,km,price,bluetooth,car_play,air_conditioning,power_steering,power_windows,central_locking,alarm,radio,dims
+1001,Toyota,Corolla,2020,LE,25000,18500.00,Sí,Sí,Sí,Sí,Sí,Sí,Sí,Sí,"{'length': 4.6, 'width': 1.8, 'height': 1.5}"
+1002,Honda,Civic,2019,LX,32000,16800.00,Sí,No,Sí,Sí,Sí,Sí,Sí,Sí,"{'length': 4.6, 'width': 1.8, 'height': 1.4}"
+1003,Ford,Focus,2021,SE,18000,19500.00,Sí,Sí,Sí,Sí,Sí,Sí,Sí,Sí,"{'length': 4.4, 'width': 1.8, 'height': 1.5}"
+1004,Chevrolet,Cruze,2018,LT,45000,14200.00,No,Sí,Sí,Sí,Sí,Sí,Sí,Sí,"{'length': 4.7, 'width': 1.8, 'height': 1.5}"
+1005,Nissan,Sentra,2020,SV,28000,17200.00,Sí,Sí,Sí,Sí,Sí,Sí,Sí,Sí,"{'length': 4.6, 'width': 1.8, 'height': 1.5}"
