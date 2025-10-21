@@ -143,8 +143,63 @@
         "dependencies": [
           7
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Pydantic Schemas for Vehicle Search Tool",
+            "description": "Create `VehiclePreferences` and `VehicleResult` Pydantic models in `app/tools/catalog_search.py` to define the structured input and output for the vehicle search tool. This ensures type safety and clear documentation for the LangChain tool interface.",
+            "dependencies": [],
+            "details": "In `app/tools/catalog_search.py`, define two Pydantic `BaseModel` classes. `VehiclePreferences` will serve as the `args_schema` and include fields like `budget_min`, `budget_max`, `make`, `model`, `km_max`, and `features`. `VehicleResult` will structure the output, including all fields from the `Vehicle` model plus `similarity_score` and `justification`.",
+            "status": "done",
+            "testStrategy": "Validate the models by instantiating them with both valid and invalid data to ensure type checking and validation rules work as expected."
+          },
+          {
+            "id": 2,
+            "title": "Implement Hard Filter Logic using SQLAlchemy",
+            "description": "In the `catalog_search_impl` function within `app/tools/catalog_search.py`, implement the initial query construction using SQLAlchemy. This part should filter the `Vehicle` model based on exact criteria from the `VehiclePreferences` input.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a function `catalog_search_impl` that accepts a dictionary of preferences. Inside, use the SQLAlchemy session to query the `Vehicle` model from `app/db/models/vehicle.py`. Apply filters for `price` (>= `budget_min`, <= `budget_max`), `km` (<= `km_max`), and for each feature in `features` using JSONB containment queries on the `Vehicle.features` column.",
+            "status": "done",
+            "testStrategy": "Write unit tests that call the function with different combinations of budget, km, and feature filters. Verify that the generated SQLAlchemy query is correct and that it returns the expected subset of vehicles from a test database."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Hybrid Search for Make/Model Matching",
+            "description": "Enhance `catalog_search_impl` to use the hybrid search functionality for fuzzy matching of `make` and `model`. This will rank the filtered candidates based on semantic relevance.",
+            "dependencies": [
+              2
+            ],
+            "details": "After applying hard filters, if `make` or `model` are present in the preferences, pass the resulting list of candidate vehicles to the `search_engine.hybrid_search` method located in `app/search/vector_store.py`. If `make` and `model` are not provided, simply use the filtered list as is, limited to the top 5 results.",
+            "status": "done",
+            "testStrategy": "Test with various make/model inputs, including common typos (e.g., 'Toyoya Camri'). Verify that the function correctly calls the hybrid search and returns ranked results. Also test the fallback path when no make/model is specified."
+          },
+          {
+            "id": 4,
+            "title": "Develop Result Formatting and Justification Generation",
+            "description": "Create the final processing logic within `catalog_search_impl` to format the ranked vehicles into `VehicleResult` objects and generate a brief justification for each match.",
+            "dependencies": [
+              3
+            ],
+            "details": "Iterate over the top 5 ranked results from the hybrid search. For each vehicle, construct a `VehicleResult` object using the schema from subtask 1. Normalize the similarity score to a 0-1 range. Generate a dynamic `justification` string that summarizes why the vehicle is a good match (e.g., 'Matches budget range and has required features. High relevance for make/model.').",
+            "status": "done",
+            "testStrategy": "Verify that the output is a list of valid `VehicleResult` objects. Check that the justification string accurately reflects the match criteria that were met. Ensure similarity scores are correctly formatted and included."
+          },
+          {
+            "id": 5,
+            "title": "Wrap Search Logic in a LangChain Tool Object",
+            "description": "Finalize the `catalog_search.py` module by instantiating the LangChain `Tool` object, wrapping the `catalog_search_impl` function, and adding comprehensive documentation.",
+            "dependencies": [
+              1,
+              4
+            ],
+            "details": "At the end of `app/tools/catalog_search.py`, create a `Tool` instance named `catalog_search_tool`. Assign the `catalog_search_impl` function to the `func` parameter, `VehiclePreferences` to the `args_schema`, and provide a descriptive `description` string for the LLM agent explaining what the tool does, its parameters, and when to use it.",
+            "status": "done",
+            "testStrategy": "Import the `catalog_search_tool` into a test script. Manually invoke the tool with sample arguments to ensure it executes end-to-end correctly. Check that the tool's name, description, and schema are correctly configured for the LangChain agent."
+          }
+        ]
       },
       {
         "id": 9,
@@ -176,7 +231,7 @@
     ],
     "metadata": {
       "created": "2025-10-21T00:40:20.748Z",
-      "updated": "2025-10-21T01:47:40.801Z",
+      "updated": "2025-10-21T02:29:08.366Z",
       "description": "Tasks for master context"
     }
   }
