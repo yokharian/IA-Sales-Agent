@@ -1,10 +1,10 @@
-# Product Requirements Document: Local RAG Helper (FAISS + HuggingFace)
+# Product Requirements Document: Local RAG Helper (ChromaDB + HuggingFace)
 
 ## 1. Product Overview
 
 ### 1.1 Purpose
 
-Provide a simple, local-first helper to retrieve the most relevant context from a user's document collection. The system builds embeddings using a local HuggingFace model and performs similarity search with FAISS to return the top matching chunks for a query. It intentionally does not call an LLM to generate answers; instead it returns the concatenated relevant context.
+Provide a simple, local-first helper to retrieve the most relevant context from a user's document collection. The system builds embeddings using a local HuggingFace model and performs similarity search with ChromaDB to return the top matching chunks for a query. It intentionally does not call an LLM to generate answers; instead it returns the concatenated relevant context.
 
 ### 1.2 Target Users
 
@@ -33,7 +33,7 @@ Provide a simple, local-first helper to retrieve the most relevant context from 
 
 ### 2.3 Retrieval System
 
-- FAISS vector index created at runtime
+- ChromaDB collection persisted on disk at `data/chroma`
 - Top-K retrieval (default K=2) with relevance scores
 
 ### 2.4 Output
@@ -46,12 +46,12 @@ Provide a simple, local-first helper to retrieve the most relevant context from 
 ### 3.1 Components
 
 - `DocumentLoader`: File I/O and text chunking
-- `RetrievalSystem`: FAISS store + similarity search
+- `RetrievalSystem`: ChromaDB store + similarity search
 - `RAGSystem`: Orchestrates loading, indexing, and querying; exposes `obtain_knowledge_base(query)`
 
 ### 3.2 Dependencies
 
-- `faiss-cpu` for vector indexing
+- `chromadb` for vector storage
 - `langchain`, `langchain-community`, `langchain-huggingface`, `langchain-text-splitters`, `langchain-core`
 - `numpy`
 
@@ -64,20 +64,20 @@ Provide a simple, local-first helper to retrieve the most relevant context from 
 
 1. Read files from `data/documents/` → `DocumentLoader`
 2. Split into chunks (500/100) → `DocumentLoader`
-3. Build FAISS index with HuggingFace embeddings → `RetrievalSystem`
+3. Build ChromaDB collection with HuggingFace embeddings (persisted to `data/chroma`) → `RetrievalSystem`
 4. Query similarity search (top-2) → `RetrievalSystem`
 5. Concatenate selected chunks → `RAGSystem.obtain_knowledge_base`
 
 ## 4. Current Limitations
 
-- In-memory FAISS index (rebuilt on each run; no persistence)
+- ChromaDB collection persisted on disk at `data/chroma` (index grows with corpus; no deduplication across runs)
 - No embedding caching
 - No multi-user or access control features
 - Does not generate natural-language answers (context only)
 
 ## 5. Future Enhancements
 
-- Persistent vector storage (e.g., saving FAISS index to disk)
+- Configurable persistence directory and collection management (prevent duplicates, custom collection names)
 - Configurable chunking and retrieval parameters via config file / CLI
 - Support for more input formats (PDF, DOCX) via LangChain loaders
 - Optional LLM answering module using the retrieved context

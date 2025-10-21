@@ -1,13 +1,13 @@
-# Local RAG System (FAISS + HuggingFace)
+# Local RAG System (ChromaDB + HuggingFace)
 
-A lightweight Python Retrieval-Augmented Generation (RAG) helper that lets you query your local document collection using natural language. It builds embeddings with HuggingFace and performs similarity search with FAISS to return the most relevant context for your query.
+A lightweight Python Retrieval-Augmented Generation (RAG) helper that lets you query your local document collection using natural language. It builds embeddings with HuggingFace and performs similarity search with ChromaDB to return the most relevant context for your query.
 
 ## 🌟 Features
 
 - Document loading from a local folder (.txt and .md supported)
 - Smart chunking with LangChain's RecursiveCharacterTextSplitter
 - Local embeddings via HuggingFace (all-MiniLM-L6-v2)
-- Fast similarity search using FAISS
+- Fast similarity search using ChromaDB
 - Minimal API surface and easy-to-read code
 
 ## 🚀 Quick Start
@@ -54,7 +54,7 @@ commercial-agent/
 ├── src/
 │   ├── __init__.py
 │   ├── document_loader.py    # Loads and chunks local documents
-│   ├── retrieval_system.py   # FAISS vector store + similarity search
+│   ├── retrieval_system.py   # ChromaDB vector store + similarity search
 │   └── rag_system.py         # Orchestration and simple query interface
 │
 ├── data/
@@ -98,7 +98,7 @@ Note: An optional environment variable `OPENAI_MODEL` is read by `RAGSystem` but
 1. Documents are loaded from `data/documents` (supports .txt and .md, skips hidden files)
 2. Text is chunked using RecursiveCharacterTextSplitter (default 500/100)
 3. Each chunk is embedded with HuggingFace (all-MiniLM-L6-v2)
-4. FAISS performs similarity search to find the most relevant chunks for a query
+4. ChromaDB performs similarity search to find the most relevant chunks for a query
 5. The selected chunks are concatenated and returned as a context string
 
 ## 📊 Defaults
@@ -110,7 +110,7 @@ Note: An optional environment variable `OPENAI_MODEL` is read by `RAGSystem` but
 
 ## ⚠️ Current Limitations
 
-- No persistence layer beyond the in-memory FAISS index built at runtime
+- ChromaDB index is persisted to data/chroma; repeated runs may append duplicate chunks if documents are re-ingested
 - No caching: embeddings are recreated on each run
 - This repo does not generate an LLM answer; it returns the most relevant context
 
@@ -131,5 +131,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- HuggingFace and FAISS for open-source tooling
+- HuggingFace and ChromaDB for open-source tooling
 - The open-source community for inspiration and utilities
