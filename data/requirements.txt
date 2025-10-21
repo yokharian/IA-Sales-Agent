@@ -1,0 +1,4 @@
+markdownify
+beautifulsoup4
+certifi
+langchain-community
