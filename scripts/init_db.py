@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.append(str(Path(__file__).parent / "src"))
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from db.database import create_db_and_tables
 from models.vehicle import Vehicle

@@ -12,3 +12,13 @@ tiktoken
 sentence_transformers
 langchain_openai
 pytest
+# Database and CSV processing dependencies
+sqlmodel
+psycopg2-binary
+pandas
+python-dotenv
+unidecode
+
+# Search and vector embedding dependencies
+rapidfuzz
+langchain-community

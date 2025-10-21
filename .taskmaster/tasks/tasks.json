@@ -75,8 +75,63 @@
         "dependencies": [
           6
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create VehicleSearchEngine Class and Initialize Embedding Model",
+            "description": "Set up the basic structure for the search engine by creating the `VehicleSearchEngine` class in a new file, `src/search/engine.py`. This class will manage the search components and initialize the HuggingFace sentence-transformer embedding model.",
+            "dependencies": [],
+            "details": "Create a new file `src/search/engine.py`. Define `class VehicleSearchEngine`. In its `__init__` method, instantiate `HuggingFaceEmbeddings` with `model_name='sentence-transformers/all-MiniLM-L6-v2'`, `model_kwargs={'device': 'cpu'}`, and `encode_kwargs={'normalize_embeddings': True}`. This will serve as the foundation for all search-related functionality.",
+            "status": "done",
+            "testStrategy": "Verify that the `VehicleSearchEngine` class can be instantiated without errors. Write a unit test to confirm the `embeddings` attribute is a valid `HuggingFaceEmbeddings` instance. Test the model by encoding a sample sentence and checking the output vector's shape."
+          },
+          {
+            "id": 2,
+            "title": "Implement Vehicle Data Loading and Text Formatting for Indexing",
+            "description": "Add a method to the `VehicleSearchEngine` to fetch vehicle data from the PostgreSQL database (setup in Task 6) and format it into a single descriptive string per vehicle, which will be used for indexing by all search retrievers.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a method, e.g., `_prepare_documents()`. This method will query the `vehicles` table using SQLModel. For each vehicle, it will construct a text string: `f'{make} {model} {version} {year} {km}km {features_text}'`. The `features_text` will be a space-separated string of keys from the `features` JSONB column where the value is true. The method should return a list of LangChain `Document` objects containing the formatted text and metadata like `stock_id` and `price`.",
+            "status": "done",
+            "testStrategy": "Unit test the formatting logic with mock vehicle objects, including cases with and without features, and with empty feature lists. Verify correct string concatenation and metadata extraction against a known input."
+          },
+          {
+            "id": 3,
+            "title": "Build and Persist ChromaDB Vector Store",
+            "description": "Create a method to build the ChromaDB vector store. This method will take the prepared vehicle documents, generate embeddings using the initialized model, and store them in a persistent ChromaDB collection on disk.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement a `build_index()` method in `VehicleSearchEngine`. This method will call `_prepare_documents()` to get the data. Then, use `Chroma.from_documents()` to create the vector store, passing the documents, the embedding model instance, and setting `persist_directory='./data/chroma'`. The engine's `__init__` should also be updated to load from this directory if it exists.",
+            "status": "done",
+            "testStrategy": "After running `build_index()`, verify that the `./data/chroma` directory is created and populated. Write a test to load the persistent store in a new engine instance and perform a simple similarity search to confirm it's functional and data is persisted correctly."
+          },
+          {
+            "id": 4,
+            "title": "Set Up BM25 Retriever and Rapidfuzz Fuzzy Search",
+            "description": "Integrate the BM25 keyword retriever and the rapidfuzz fuzzy matching logic. These will provide the non-semantic search components for the hybrid system, improving keyword relevance and typo tolerance.",
+            "dependencies": [
+              2
+            ],
+            "details": "In the `build_index()` method, after preparing documents, initialize `langchain_community.retrievers.BM25Retriever` with the documents. Store this retriever as a class attribute. Separately, store the raw list of text strings and their corresponding `stock_id`s as another attribute to serve as the corpus for `rapidfuzz.process.extract`.",
+            "status": "done",
+            "testStrategy": "Unit test the BM25 retriever with specific keyword queries ('Toyota', '2022') and ensure it returns relevant documents. Test the fuzzy search component by calling `rapidfuzz.process.extract` with common typos ('Toyoya', 'Hond Civic') against the prepared corpus and verifying it returns the correct vehicle."
+          },
+          {
+            "id": 5,
+            "title": "Implement Hybrid Search Logic with Weighted Reranking",
+            "description": "Create the main `search` method that queries all three retrievers (vector, BM25, fuzzy) and combines their results using a weighted scoring algorithm to produce a single, reranked list of relevant vehicles.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Implement a `hybrid_search(query: str, k: int = 5)` method. This method will fetch results from the ChromaDB vector store, the BM25 retriever, and the rapidfuzz process. It must normalize the scores from each retriever. A combined score will be calculated for each result using a weighted formula (e.g., `0.5*vec_score + 0.25*bm25_score + 0.25*fuzzy_score`). The final list of top `k` unique vehicles will be returned, sorted by this new score.",
+            "status": "done",
+            "testStrategy": "Create a golden dataset of queries and expected results. Test the `hybrid_search` method with various query types: semantic ('family car'), keyword ('Ford Explorer'), and typo-ridden ('Toyta Camy'). Measure if the combined results are more relevant and comprehensive than any single search method alone."
+          }
+        ]
       },
       {
         "id": 8,
@@ -121,7 +176,7 @@
     ],
     "metadata": {
       "created": "2025-10-21T00:40:20.748Z",
-      "updated": "2025-10-21T01:16:58.511Z",
+      "updated": "2025-10-21T01:47:40.801Z",
       "description": "Tasks for master context"
     }
   }
