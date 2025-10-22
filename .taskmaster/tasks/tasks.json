@@ -278,13 +278,66 @@
           8,
           9
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement FactChecker Class with Claim Extraction",
+            "description": "Create a `FactChecker` class in a new file, `src/tools/fact_checker.py`, that can extract factual claims such as stock IDs and prices from a given text using regular expressions.",
+            "dependencies": [],
+            "details": "The class should have an `__init__` method that accepts a database session. Implement an `extract_claims` method using regex to find patterns for stock_ids (e.g., `r'stock[\\s#]*(\\d{5,6})'`) and prices (e.g., `r'\\$?([\\d,]+\\.?\\d*)'`). This method should return a list of structured claim dictionaries, each containing the claim type, value, and position in the original text.",
+            "status": "done",
+            "testStrategy": "Unit test the `extract_claims` method with various text samples, including cases with no claims, multiple claims, and different formatting for stock IDs and prices to ensure robust parsing."
+          },
+          {
+            "id": 2,
+            "title": "Add Database Verification Logic to FactChecker",
+            "description": "Extend the `FactChecker` class to include a `verify_claim` method that cross-references extracted claims against the PostgreSQL database.",
+            "dependencies": [
+              1
+            ],
+            "details": "The `verify_claim` method will take a claim dictionary from `extract_claims`. For 'stock_id' claims, it will query the `Vehicle` table to ensure existence. For 'price' claims, it will find the associated vehicle in the text context and compare the claimed price with the database price, respecting the specified 0.1% tolerance. This method requires access to the database session initialized in the constructor.",
+            "status": "done",
+            "testStrategy": "Test claim verification with valid and invalid stock IDs. For price verification, test with values inside, outside, and exactly at the 0.1% tolerance boundary. Mock the database session for isolated unit tests."
+          },
+          {
+            "id": 3,
+            "title": "Define Guardrailed Prompt Template for RAG Chain",
+            "description": "Create a new LangChain `PromptTemplate` that provides strict instructions to the LLM to prevent hallucinations and ensure it only uses the information from the provided context.",
+            "dependencies": [],
+            "details": "The template must include explicit rules like 'You MUST ONLY use information from the provided context,' 'Always include the stock_id when referring to a specific vehicle,' and 'If information is not in the context, state that the information is not available.' The template will have 'context' and 'question' as input variables. Store this in a central location like `src/chains/prompts.py`.",
+            "status": "done",
+            "testStrategy": "Review the prompt for clarity, strictness, and its ability to guide the LLM's output. During integration testing, verify that the LLM adheres to the instructions by providing context that intentionally omits certain information."
+          },
+          {
+            "id": 4,
+            "title": "Implement the Core `ValidatedRAGChain`",
+            "description": "Create a custom LangChain-compatible chain class, `ValidatedRAGChain`, in a new file `src/chains/validated_rag_chain.py`. This class will integrate a retriever, the guardrailed prompt template, and an LLM to generate responses.",
+            "dependencies": [
+              3
+            ],
+            "details": "The `ValidatedRAGChain` class will have a primary method (e.g., `_call`) that accepts a question. This method will first retrieve relevant documents from the vector store, format them as context, and then use an `LLMChain` with the guardrailed prompt to generate a response. At this stage, the chain's output will be the generated text and source documents, without the fact-checking step.",
+            "status": "done",
+            "testStrategy": "Test the chain's ability to correctly retrieve context and generate a response based on that context. Use a deterministic or mocked LLM (like `FakeLLM`) to test the data flow from retriever to prompt to LLM output in a predictable manner."
+          },
+          {
+            "id": 5,
+            "title": "Integrate Fact-Checking into the RAG Chain Pipeline",
+            "description": "Modify the `ValidatedRAGChain` to use the `FactChecker` to parse and validate the generated LLM response, adding the validation results to the final output of the chain.",
+            "dependencies": [
+              2,
+              4
+            ],
+            "details": "In the `ValidatedRAGChain`'s execution method, after the LLM generates a response, instantiate and use the `FactChecker`. Pass the generated text to `extract_claims`, then iterate through the claims and call `verify_claim`. The final output must be a dictionary containing the LLM response, source documents, detailed fact-check results, and a top-level boolean flag `validated` indicating if all claims were valid.",
+            "status": "done",
+            "testStrategy": "Perform end-to-end testing with questions designed to produce factual claims. Use a combination of mocked and real data in the vector store and database to trigger both valid and invalid claims, and assert that the `validated` flag is set correctly based on the outcome."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-10-21T00:40:20.748Z",
-      "updated": "2025-10-22T20:33:46.923Z",
+      "updated": "2025-10-22T21:06:13.947Z",
       "description": "Tasks for master context"
     }
   }

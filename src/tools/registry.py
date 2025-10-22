@@ -12,12 +12,14 @@ from .catalog_search import catalog_search_tool
 from .finance_calculation import finance_calculation_tool
 from .fact_check import fact_check_tool
 from .finance_calculator_tool import finance_calc_tool
+from .enhanced_fact_check import enhanced_fact_check_tool
 
 # Registry of all available tools
 AVAILABLE_TOOLS: List[Tool] = [
     catalog_search_tool,
     finance_calculation_tool,
     fact_check_tool,
+    enhanced_fact_check_tool,  # Enhanced version with better validation
     finance_calc_tool,  # Enhanced finance calculator with multiple terms
 ]
 
