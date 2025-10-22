@@ -11,12 +11,14 @@ from langchain_core.tools import Tool
 from .catalog_search import catalog_search_tool
 from .finance_calculation import finance_calculation_tool
 from .fact_check import fact_check_tool
+from .finance_calculator_tool import finance_calc_tool
 
 # Registry of all available tools
 AVAILABLE_TOOLS: List[Tool] = [
     catalog_search_tool,
     finance_calculation_tool,
     fact_check_tool,
+    finance_calc_tool,  # Enhanced finance calculator with multiple terms
 ]
 
 # Tool name to tool mapping for easy lookup

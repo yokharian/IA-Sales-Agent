@@ -211,8 +211,61 @@
         "dependencies": [
           6
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Core Financial Calculation Logic Class",
+            "description": "Implement the core financial calculation logic in a new, dedicated file. This class will handle the mathematical computations for monthly payments and amortization schedules using the 'decimal' library for financial precision.",
+            "dependencies": [],
+            "details": "Create a new file `src/commercial_agent/tools/finance_calculator_logic.py`. Inside, define a class `FinanceCalculator` with two static methods: `calculate_monthly_payment(principal, months)` and `generate_amortization_schedule(principal, monthly_payment, months)`. Use the provided formulas, a fixed annual rate of 10%, and the `Decimal` type for all calculations to avoid floating-point errors.",
+            "status": "done",
+            "testStrategy": "Unit test `calculate_monthly_payment` with known values (e.g., a $10,000 loan for 60 months at 10% should be $212.47). Test `generate_amortization_schedule` to ensure the final balance is near zero."
+          },
+          {
+            "id": 2,
+            "title": "Define Pydantic Input Schema for the Calculator Tool",
+            "description": "Define a Pydantic `BaseModel` to serve as the structured argument schema for the finance calculator tool, ensuring type validation and clear input definitions.",
+            "dependencies": [],
+            "details": "In the existing file `src/commercial_agent/tools/data_models.py`, add a new class `FinanceCalculatorArgs(BaseModel)`. This model should include the fields `price: float`, `down_payment: float`, and `return_schedule: bool = Field(default=False, description='If true, return the full monthly amortization schedule.')`. This aligns with the existing pattern of using Pydantic for tool argument schemas.",
+            "status": "done",
+            "testStrategy": "Validate that Pydantic correctly parses valid inputs and raises validation errors for invalid inputs (e.g., non-numeric price). Test the default value of `return_schedule`."
+          },
+          {
+            "id": 3,
+            "title": "Implement the Tool's Main Wrapper Function",
+            "description": "Create the main function that will be executed by the tool. This function will orchestrate the calculation process by using the core logic and input schema, and format the final output.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "In a new file `src/commercial_agent/tools/finance_calculator_tool.py`, create a function `_run_finance_calculator(price: float, down_payment: float, return_schedule: bool)`. This function will import and use the `FinanceCalculator` class. It must perform validation (down_payment <= price), calculate the principal, loop through terms [36, 48, 60, 72], and generate a summary dictionary. If `return_schedule` is true, it should also generate and include the amortization schedule for the first term (36 months). The final output should be a formatted string or a dictionary ready for serialization.",
+            "status": "done",
+            "testStrategy": "Test the wrapper function with various inputs. Verify it correctly handles the `return_schedule` flag. Test input validation logic, ensuring it raises a `ValueError` if `down_payment > price`."
+          },
+          {
+            "id": 4,
+            "title": "Instantiate and Configure the LangChain Tool",
+            "description": "Instantiate the LangChain `Tool` object, connecting the wrapper function, argument schema, and descriptive metadata.",
+            "dependencies": [
+              3
+            ],
+            "details": "In `src/commercial_agent/tools/finance_calculator_tool.py`, after the wrapper function, import `Tool` from langchain, and `FinanceCalculatorArgs` from data_models. Instantiate the tool: `finance_calc_tool = Tool(name='finance_calculator', func=_run_finance_calculator, description='Calculates monthly payments for a given vehicle price and down payment...', args_schema=FinanceCalculatorArgs)`. Ensure the description is clear and guides the LLM on how to use the tool.",
+            "status": "done",
+            "testStrategy": "Inspect the created `Tool` object to ensure its `name`, `func`, `description`, and `args_schema` attributes are correctly configured. Manually invoke the tool's `run()` method with a dictionary of arguments to verify it executes."
+          },
+          {
+            "id": 5,
+            "title": "Integrate the Finance Calculator Tool into the Agent",
+            "description": "Add the newly created finance calculator tool to the agent's toolset, making it available for use during conversations.",
+            "dependencies": [
+              4
+            ],
+            "details": "Locate the agent initialization file, expected to be `src/commercial_agent/agent/agent.py`. Import the `finance_calc_tool` instance from `src/commercial_agent/tools/finance_calculator_tool.py`. Append this new tool to the list of tools that is passed to the agent constructor or factory function.",
+            "status": "done",
+            "testStrategy": "Run the full agent and pose a question that should trigger the finance calculator (e.g., 'What are the payments for a $30,000 car with $5,000 down?'). Verify the agent successfully calls the tool and returns a correctly formatted answer."
+          }
+        ]
       },
       {
         "id": 10,
@@ -231,7 +284,7 @@
     ],
     "metadata": {
       "created": "2025-10-21T00:40:20.748Z",
-      "updated": "2025-10-21T02:29:08.366Z",
+      "updated": "2025-10-22T20:33:46.923Z",
       "description": "Tasks for master context"
     }
   }
