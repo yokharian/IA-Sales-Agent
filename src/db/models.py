@@ -1,6 +1,7 @@
-from sqlmodel import Field, SQLModel, Column
-from sqlalchemy import JSON
 from typing import Optional, Dict, Any
+
+from sqlalchemy import Column, JSON
+from sqlmodel import SQLModel, Field
 
 
 class Vehicle(SQLModel, table=True):

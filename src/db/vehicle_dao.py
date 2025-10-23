@@ -5,7 +5,7 @@ Data access layer for vehicle operations.
 from typing import Optional, List
 from sqlmodel import Session, select
 
-from models.vehicle import Vehicle
+from db.models import Vehicle
 
 
 def get_vehicle_by_id(db: Session, stock_id: int) -> Optional[Vehicle]:

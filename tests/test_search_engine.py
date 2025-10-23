@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from search.engine import VehicleSearchEngine
 from search.service import VehicleSearchService
-from models.vehicle import Vehicle
+from db.models import Vehicle
 
 
 class TestVehicleSearchEngine:

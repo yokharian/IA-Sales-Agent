@@ -59,26 +59,26 @@ python scripts/ingest_csv.py data/sample_vehicles.csv --create-tables
 ```python
 from src.db.database import get_session_sync, create_db_and_tables
 from src.db.vehicle_dao import get_vehicle_by_id, search_vehicles
-from src.models.vehicle import Vehicle
+from src.db.models import Vehicle
 
 # Create tables
 create_db_and_tables()
 
 # Get a vehicle by ID
 with get_session_sync() as session:
-    vehicle = get_vehicle_by_id(session, 1001)
-    print(f"Found: {vehicle.make} {vehicle.model}")
+	vehicle = get_vehicle_by_id(session, 1001)
+	print(f"Found: {vehicle.make} {vehicle.model}")
 
 # Search vehicles
 with get_session_sync() as session:
-    results = search_vehicles(
-        session,
-        make="toyota",
-        min_year=2020,
-        max_price=20000
-    )
-    for vehicle in results:
-        print(f"{vehicle.make} {vehicle.model} - ${vehicle.price}")
+	results = search_vehicles(
+		session,
+		make="toyota",
+		min_year=2020,
+		max_price=20000
+	)
+	for vehicle in results:
+		print(f"{vehicle.make} {vehicle.model} - ${vehicle.price}")
 ```
 
 ## CSV Format

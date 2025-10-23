@@ -17,7 +17,7 @@ from sqlmodel import Session
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from models.vehicle import Vehicle
+from db.models import Vehicle
 from db.database import engine, create_db_and_tables
 from utils.normalization import normalize_text, parse_boolean, safe_int, safe_float
 

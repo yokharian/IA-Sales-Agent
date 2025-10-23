@@ -12,7 +12,7 @@ from sqlalchemy import and_, or_, text
 from sqlmodel import Session, select
 
 from search.service import VehicleSearchService
-from models.vehicle import Vehicle
+from db.models import Vehicle
 from db.database import get_session_sync
 
 

@@ -15,7 +15,7 @@ from langchain_chroma import Chroma
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
-from models.vehicle import Vehicle
+from db.models import Vehicle
 from rapidfuzz import fuzz, process
 
 

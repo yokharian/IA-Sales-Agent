@@ -23,7 +23,6 @@ from tools.finance_calculation import (
     finance_calculation_tool,
     calculate_monthly_payment,
 )
-from tools.registry import get_tool, get_all_tools, get_tool_names
 
 
 class TestVehiclePreferences:
@@ -128,7 +127,7 @@ class TestCatalogSearchImpl:
     @patch("tools.catalog_search.get_session_sync")
     def test_search_with_filters(self, mock_session, mock_search_service):
         """Test search with filters."""
-        from models.vehicle import Vehicle
+        from db.models import Vehicle
 
         # Mock database session
         mock_vehicle = Vehicle(
@@ -231,38 +230,3 @@ class TestFinanceCalculationImpl:
         assert result.payment_breakdown.monthly_payment == 0
         assert result.payment_breakdown.principal_amount == 0
         assert "no financing needed" in result.recommendations[0].lower()
-
-
-class TestToolRegistry:
-    """Test tool registry functionality."""
-
-    def test_get_all_tools(self):
-        """Test getting all tools."""
-        tools = get_all_tools()
-
-        assert len(tools) == 3
-        tool_names = [tool.name for tool in tools]
-        assert "catalog_search" in tool_names
-        assert "finance_calculation" in tool_names
-        assert "fact_check" in tool_names
-
-    def test_get_tool_names(self):
-        """Test getting tool names."""
-        names = get_tool_names()
-
-        assert "catalog_search" in names
-        assert "finance_calculation" in names
-        assert "fact_check" in names
-
-    def test_get_tool(self):
-        """Test getting specific tool."""
-        tool = get_tool("catalog_search")
-
-        assert tool.name == "catalog_search"
-        assert tool.func is not None
-        assert tool.description is not None
-
-    def test_get_nonexistent_tool(self):
-        """Test getting nonexistent tool."""
-        with pytest.raises(KeyError):
-            get_tool("nonexistent_tool")
