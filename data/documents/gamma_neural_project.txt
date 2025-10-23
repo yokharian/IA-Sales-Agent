@@ -1,8 +1,0 @@
-Document ID: GAMMA-003
-Title: The Gamma Neural Project
-
-The Gamma Neural Project studies how artificial neurons evolve in simulated ecosystems.
-Its experiment “Synapse Rain” models competitive learning between AI agents.
-Data clusters follow the ID pattern GNP-SYN.
-Performance metrics measure cooperation, mutation, and long-term memory retention.
-If retrieved correctly, this document should include: Gamma Neural, Synapse Rain, and simulated evolution.

@@ -1,8 +1,0 @@
-Document ID: ALPHA-001
-Title: The Alpha Robotics Lab
-
-The Alpha Robotics Lab focuses on autonomous drones that can map unknown caves.
-Its flagship prototype, called the “EchoBug”, uses sonar and AI navigation.
-Every mission is labeled with the code prefix ARL-MAP.
-Test logs often include phrases like “EchoBug alignment stable”.
-If retrieved correctly, this document should mention the words: Alpha Robotics, EchoBug, and sonar mapping.
