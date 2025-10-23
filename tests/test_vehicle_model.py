@@ -2,11 +2,11 @@
 Tests for Vehicle model and database operations.
 """
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 from sqlmodel import Session, create_engine, SQLModel
-from sqlalchemy import Engine
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))

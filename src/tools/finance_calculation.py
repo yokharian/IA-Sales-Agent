@@ -6,9 +6,9 @@ vehicle financing options including monthly payments and amortization schedules.
 """
 
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+
 from langchain_core.tools import Tool
-import math
+from pydantic import BaseModel, Field
 
 
 class FinanceCalculationInput(BaseModel):

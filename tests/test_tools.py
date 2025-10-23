@@ -15,7 +15,6 @@ from tools.catalog_search import (
     VehicleResult,
     catalog_search_impl,
     catalog_search_tool,
-    generate_justification,
 )
 from tools.finance_calculation import (
     FinanceCalculationInput,
@@ -23,13 +22,6 @@ from tools.finance_calculation import (
     finance_calculation_impl,
     finance_calculation_tool,
     calculate_monthly_payment,
-)
-from tools.fact_check import (
-    FactCheckInput,
-    FactCheckResult,
-    fact_check_impl,
-    fact_check_tool,
-    extract_vehicle_info,
 )
 from tools.registry import get_tool, get_all_tools, get_tool_names
 
@@ -102,7 +94,6 @@ class TestVehicleResult:
             km=25000,
             features={"bluetooth": True, "air_conditioning": True},
             similarity_score=0.95,
-            justification="Great match for your criteria",
         )
 
         assert result.stock_id == 1001
@@ -114,7 +105,6 @@ class TestVehicleResult:
         assert result.km == 25000
         assert result.features == {"bluetooth": True, "air_conditioning": True}
         assert result.similarity_score == 0.95
-        assert result.justification == "Great match for your criteria"
 
     def test_invalid_similarity_score(self):
         """Test invalid similarity score validation."""
@@ -128,52 +118,7 @@ class TestVehicleResult:
                 km=25000,
                 features={},
                 similarity_score=1.5,  # Invalid: > 1
-                justification="Test",
             )
-
-
-class TestGenerateJustification:
-    """Test justification generation."""
-
-    def test_budget_justification(self):
-        """Test budget-based justification."""
-        from models.vehicle import Vehicle
-
-        vehicle = Vehicle(
-            stock_id=1001,
-            make="toyota",
-            model="corolla",
-            year=2020,
-            price=18500.00,
-            km=25000,
-            features={"bluetooth": True},
-        )
-
-        prefs = VehiclePreferences(budget_min=15000, budget_max=20000)
-        justification = generate_justification(vehicle, prefs, 0.8)
-
-        assert "fits budget" in justification.lower()
-        assert "18,500" in justification  # Updated to match formatted price
-
-    def test_features_justification(self):
-        """Test features-based justification."""
-        from models.vehicle import Vehicle
-
-        vehicle = Vehicle(
-            stock_id=1001,
-            make="toyota",
-            model="corolla",
-            year=2020,
-            price=18500.00,
-            km=25000,
-            features={"bluetooth": True, "air_conditioning": True},
-        )
-
-        prefs = VehiclePreferences(features=["bluetooth", "air_conditioning"])
-        justification = generate_justification(vehicle, prefs, 0.8)
-
-        assert "bluetooth" in justification.lower()
-        assert "air conditioning" in justification.lower()
 
 
 class TestCatalogSearchImpl:
@@ -286,98 +231,6 @@ class TestFinanceCalculationImpl:
         assert result.payment_breakdown.monthly_payment == 0
         assert result.payment_breakdown.principal_amount == 0
         assert "no financing needed" in result.recommendations[0].lower()
-
-
-class TestExtractVehicleInfo:
-    """Test vehicle information extraction."""
-
-    def test_extract_price(self):
-        """Test price extraction."""
-        text = "This Toyota Corolla costs $18,500 and is a great deal!"
-        info = extract_vehicle_info(text)
-
-        assert info["price"] == 18500.0
-
-    def test_extract_year(self):
-        """Test year extraction."""
-        text = "This 2020 Honda Civic is in excellent condition"
-        info = extract_vehicle_info(text)
-
-        assert info["year"] == 2020
-
-    def test_extract_make_model(self):
-        """Test make and model extraction."""
-        text = "I'm looking at a Toyota Camry for sale"
-        info = extract_vehicle_info(text)
-
-        assert info["make"] == "toyota"
-        assert info["model"] == "camry for sale"  # Updated to match actual extraction
-
-    def test_extract_features(self):
-        """Test feature extraction."""
-        text = "This car has bluetooth, air conditioning, and power windows"
-        info = extract_vehicle_info(text)
-
-        assert "bluetooth" in info["features"]
-        assert "air_conditioning" in info["features"]
-        assert "power_windows" in info["features"]
-
-
-class TestFactCheckImpl:
-    """Test fact-checking implementation."""
-
-    @patch("tools.fact_check.verify_against_database")
-    def test_accurate_information(self, mock_verify):
-        """Test fact-checking with accurate information."""
-        mock_verify.return_value = {
-            "best_match": {
-                "vehicle": Mock(
-                    price=18500, year=2020, km=25000, features={"bluetooth": True}
-                ),
-                "confidence": 0.9,
-            },
-            "confidence": 0.9,
-        }
-
-        inputs = {
-            "response_text": "This Toyota Corolla costs $18,500 and is from 2020",
-            "check_price": True,
-            "check_specs": True,
-        }
-
-        result = fact_check_impl(inputs)
-
-        assert result.is_accurate is True
-        assert result.confidence_score == 0.9
-        assert len(result.verified_facts) > 0
-        assert len(result.discrepancies) == 0
-
-    @patch("tools.fact_check.verify_against_database")
-    def test_inaccurate_information(self, mock_verify):
-        """Test fact-checking with inaccurate information."""
-        mock_verify.return_value = {
-            "best_match": {
-                "vehicle": Mock(
-                    price=20000,  # Different from text
-                    year=2019,  # Different from text
-                    km=30000,
-                    features={},
-                ),
-                "confidence": 0.8,
-            },
-            "confidence": 0.8,
-        }
-
-        inputs = {
-            "response_text": "This Toyota Corolla costs $18,500 and is from 2020",
-            "check_price": True,
-            "check_specs": True,
-        }
-
-        result = fact_check_impl(inputs)
-
-        assert result.is_accurate is False
-        assert len(result.discrepancies) > 0
 
 
 class TestToolRegistry:

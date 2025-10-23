@@ -1,3 +1,4 @@
+pydantic
 langchain-classic
 openai
 numpy

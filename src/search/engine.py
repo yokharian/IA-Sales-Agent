@@ -9,17 +9,14 @@ This module provides a comprehensive search system that combines:
 
 import os
 from typing import List, Dict, Any, Optional
-from pathlib import Path
 
-from langchain_huggingface import HuggingFaceEmbeddings
+from db.database import get_session_sync
 from langchain_chroma import Chroma
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
-from rapidfuzz import fuzz, process
-import numpy as np
-
+from langchain_huggingface import HuggingFaceEmbeddings
 from models.vehicle import Vehicle
-from db.database import get_session_sync
+from rapidfuzz import fuzz, process
 
 
 class VehicleSearchEngine:

@@ -15,7 +15,6 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 from tools.registry import get_all_tools
 from tools.catalog_search import catalog_search_impl
 from tools.finance_calculation import finance_calculation_impl
-from tools.fact_check import fact_check_impl
 
 
 def demo_catalog_search():
@@ -33,7 +32,6 @@ def demo_catalog_search():
             print(f"   {i}. {result.make.title()} {result.model.title()} {result.year}")
             print(f"      Price: ${result.price:,.2f} | Mileage: {result.km:,} km")
             print(f"      Score: {result.similarity_score:.3f}")
-            print(f"      Why: {result.justification}")
             print()
     except Exception as e:
         print(f"   Error: {e}")
@@ -53,7 +51,6 @@ def demo_catalog_search():
             print(
                 f"      Price: ${result.price:,.2f} | Score: {result.similarity_score:.3f}"
             )
-            print(f"      Why: {result.justification}")
             print()
     except Exception as e:
         print(f"   Error: {e}")
@@ -69,7 +66,6 @@ def demo_catalog_search():
             print(
                 f"      Price: ${result.price:,.2f} | Features: {list(result.features.keys())}"
             )
-            print(f"      Why: {result.justification}")
             print()
     except Exception as e:
         print(f"   Error: {e}")
@@ -146,82 +142,6 @@ def demo_finance_calculation():
         print(f"   Error: {e}")
 
 
-def demo_fact_check():
-    """Demonstrate fact-checking tool."""
-    print("\n✅ Fact-Check Tool Demo")
-    print("=" * 50)
-
-    # Test 1: Accurate information
-    print("\n1. Checking accurate vehicle information:")
-    inputs = {
-        "response_text": "This Toyota Corolla costs $18,500 and is from 2020 with 25,000 km",
-        "check_price": True,
-        "check_specs": True,
-    }
-
-    try:
-        result = fact_check_impl(inputs)
-        print(f"   Accurate: {result.is_accurate}")
-        print(f"   Confidence: {result.confidence_score:.3f}")
-        print(f"   Verified Facts: {len(result.verified_facts)}")
-        for fact in result.verified_facts:
-            print(f"   ✓ {fact}")
-        print(f"   Discrepancies: {len(result.discrepancies)}")
-        for disc in result.discrepancies:
-            print(f"   ✗ {disc}")
-        if result.warnings:
-            print("   Warnings:")
-            for warning in result.warnings:
-                print(f"   ⚠ {warning}")
-    except Exception as e:
-        print(f"   Error: {e}")
-
-    # Test 2: Inaccurate information
-    print("\n2. Checking inaccurate vehicle information:")
-    inputs = {
-        "response_text": "This Honda Civic costs $25,000 and is from 2022 with 10,000 km",
-        "check_price": True,
-        "check_specs": True,
-    }
-
-    try:
-        result = fact_check_impl(inputs)
-        print(f"   Accurate: {result.is_accurate}")
-        print(f"   Confidence: {result.confidence_score:.3f}")
-        print(f"   Verified Facts: {len(result.verified_facts)}")
-        for fact in result.verified_facts:
-            print(f"   ✓ {fact}")
-        print(f"   Discrepancies: {len(result.discrepancies)}")
-        for disc in result.discrepancies:
-            print(f"   ✗ {disc}")
-        if result.warnings:
-            print("   Warnings:")
-            for warning in result.warnings:
-                print(f"   ⚠ {warning}")
-    except Exception as e:
-        print(f"   Error: {e}")
-
-    # Test 3: Feature verification
-    print("\n3. Checking feature information:")
-    inputs = {
-        "response_text": "This car has bluetooth, air conditioning, and leather seats",
-        "check_features": True,
-    }
-
-    try:
-        result = fact_check_impl(inputs)
-        print(f"   Accurate: {result.is_accurate}")
-        print(f"   Confidence: {result.confidence_score:.3f}")
-        print(f"   Verified Facts: {len(result.verified_facts)}")
-        for fact in result.verified_facts:
-            print(f"   ✓ {fact}")
-        print(f"   Discrepancies: {len(result.discrepancies)}")
-        for disc in result.discrepancies:
-            print(f"   ✗ {disc}")
-    except Exception as e:
-        print(f"   Error: {e}")
-
-
 def demo_tool_registry():
     """Demonstrate tool registry functionality."""
     print("\n🔧 Tool Registry Demo")
@@ -253,7 +173,6 @@ def main():
     try:
         demo_catalog_search()
         demo_finance_calculation()
-        demo_fact_check()
         demo_tool_registry()
 
         print("\n✅ All demos completed successfully!")

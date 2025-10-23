@@ -63,69 +63,6 @@ class VehicleResult(BaseModel):
     similarity_score: float = Field(
         description="Relevance score (0-1, higher is better)", ge=0, le=1
     )
-    justification: str = Field(
-        description="Brief explanation of why this vehicle matches"
-    )
-
-
-def generate_justification(
-    vehicle: Vehicle, prefs: VehiclePreferences, score: float
-) -> str:
-    """
-    Generate a justification for why a vehicle matches the preferences.
-
-    Args:
-        vehicle: The vehicle object
-        prefs: Search preferences
-        score: Similarity score
-
-    Returns:
-        Justification string
-    """
-    reasons = []
-
-    # Budget match
-    if prefs.budget_min and prefs.budget_max:
-        if prefs.budget_min <= vehicle.price <= prefs.budget_max:
-            reasons.append(f"fits budget (${vehicle.price:,.0f})")
-    elif prefs.budget_max and vehicle.price <= prefs.budget_max:
-        reasons.append(f"within budget (${vehicle.price:,.0f})")
-    elif prefs.budget_min and vehicle.price >= prefs.budget_min:
-        reasons.append(f"meets minimum budget (${vehicle.price:,.0f})")
-
-    # Mileage match
-    if prefs.km_max and vehicle.km <= prefs.km_max:
-        reasons.append(f"low mileage ({vehicle.km:,} km)")
-
-    # Features match
-    if prefs.features:
-        matched_features = []
-        for feature in prefs.features:
-            if vehicle.features and vehicle.features.get(feature, False):
-                matched_features.append(feature.replace("_", " "))
-
-        if matched_features:
-            reasons.append(f"has {', '.join(matched_features)}")
-
-    # Make/model match
-    if prefs.make or prefs.model:
-        if score > 0.7:
-            reasons.append("excellent make/model match")
-        elif score > 0.4:
-            reasons.append("good make/model match")
-        else:
-            reasons.append("partial make/model match")
-
-    # Year info
-    if vehicle.year >= 2020:
-        reasons.append("recent model")
-    elif vehicle.year >= 2015:
-        reasons.append("modern model")
-
-    if not reasons:
-        reasons.append("matches basic criteria")
-
-    return f"{vehicle.make.title()} {vehicle.model.title()} - {', '.join(reasons)}"
 
 
 def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
@@ -136,7 +73,7 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
         preferences: Dictionary of search preferences
 
     Returns:
-        List of matching vehicles with scores and justifications
+        List of matching vehicles with scores
     """
     # Parse preferences
     prefs = VehiclePreferences(**preferences)
@@ -214,7 +151,6 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
     # Format results
     results = []
     for vehicle, score in ranked_candidates[: prefs.max_results]:
-        justification = generate_justification(vehicle, prefs, score)
 
         result = VehicleResult(
             stock_id=vehicle.stock_id,
@@ -226,7 +162,6 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
             km=vehicle.km,
             features=vehicle.features or {},
             similarity_score=score,
-            justification=justification,
         )
         results.append(result)
 
@@ -250,7 +185,7 @@ catalog_search_tool = Tool(
     and fuzzy text matching to handle typos and find relevant vehicles even
     with imperfect input.
     
-    Returns up to 20 vehicles with relevance scores and justifications
+    Returns up to 20 vehicles with relevance scores
     explaining why each vehicle matches the criteria.""",
     args_schema=VehiclePreferences,
 )
