@@ -8,7 +8,7 @@ with advanced filtering, fuzzy matching, and structured results.
 from typing import List, Optional, Dict, Any
 
 import rapidfuzz
-from langchain_core.tools import Tool
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 from db.database import get_session_sync, Vehicle
@@ -133,7 +133,7 @@ class VehicleResult(BaseModel):
     features: Dict[str, bool] = Field(description="Available features")
 
 
-def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
+def catalog_search_impl(**preferences: Any) -> List[VehicleResult]:
     """
     Search vehicle catalog with filters and fuzzy matching.
 
@@ -250,9 +250,9 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
 
 
 # Create the LangChain tool
-catalog_search_tool = Tool(
-    name="catalog_search",
+catalog_search_tool = StructuredTool.from_function(
     func=catalog_search_impl,
+    name="catalog_search",
     description="""Search the vehicle catalog with advanced filtering and fuzzy matching.
     
     This tool can find vehicles based on:

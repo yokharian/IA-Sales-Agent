@@ -10,8 +10,9 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
-from langchain_core.tools import Tool
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
+
 from db.document_loader import DocumentLoader
 
 
@@ -62,55 +63,60 @@ class RetrievalSystem:
     def initialize_retriever(
         self,
         k: int = 6,
-        fetch_k: int = 40,
-        lambda_mult: float = 0.5,
         score_threshold: float | None = 0.6,
         metadata_filter: dict | None = None,
+        fetch_k_multiplier: int = 4,
+        lambda_mult: float = 0.7,
     ):
         """
         Initializes the object with a specified vector store and retriever for handling
         document embeddings. The retriever is configured to retrieve the most relevant
-        documents based on similarity score with a threshold.
+        documents using MMR (Maximum Marginal Relevance) for better diversity.
 
         Parameters:
             k: int
-                Number of top relevant documents to retrieve. Defaults to 3.
+                Number of top relevant documents to retrieve. Defaults to 6.
 
             score_threshold: float
                 Threshold for similarity scores. Only documents with a similarity
                 score equal to or greater than this value will be retrieved.
 
-            fetch_k: int
-                Number of documents initially retrieved during an MMR search (default: 20 ).
-
-            lambda_mult: float
-                Controls diversity in MMR results (0 = maximum diversity, 1 = maximum relevance, default: 0.5 ).
-
             metadata_filter: dict | None
                Metadata filtering for selective document retrieval.
+
+            fetch_k_multiplier: int
+                Multiplier for fetch_k in MMR (fetch_k = k * fetch_k_multiplier).
+                Higher values provide more candidates for diversity. Defaults to 4.
+
+            lambda_mult: float
+                MMR lambda parameter (0-1). Higher values favor relevance (0.7),
+                lower values favor diversity (0.3). Defaults to 0.7.
         """
         # Initialize the (Sparse) BM25 retriever and (Dense) Chroma retriever.
         self._bm25_retriever = BM25Retriever.from_documents(self.documents)
         # Retrieve the top K documents with the highest similarity.
         self._bm25_retriever.k = 3
 
-        # Configurar retriever con MMR y umbral de puntuación
-        search_kwargs = {"k": k, "fetch_k": fetch_k, "lambda_mult": lambda_mult}
-        if metadata_filter:
-            search_kwargs["filter"] = metadata_filter
-
+        # Configure retriever with MMR and score threshold
         if score_threshold is not None:
             self._vector_store_retriever = self.vector_store.as_retriever(
                 search_type="similarity_score_threshold",
                 search_kwargs={
-                    **search_kwargs,
+                    "k": k,
                     "score_threshold": score_threshold,
+                    "filter": metadata_filter,
                 },
             )
         else:
+            # Use MMR (Maximum Marginal Relevance) for better diversity
             self._vector_store_retriever = self.vector_store.as_retriever(
                 search_type="mmr",
-                search_kwargs=search_kwargs,
+                search_kwargs={
+                    "k": k,
+                    "fetch_k": k * fetch_k_multiplier,  # Fetch more candidates for MMR
+                    "lambda_mult": lambda_mult,  # Balance between relevance and diversity
+                    "filter": metadata_filter,
+                },
             )
 
         # initialize the ensemble retriever
@@ -144,7 +150,7 @@ class DocumentSearchResult(BaseModel):
     )
 
 
-def document_search_impl(inputs: Dict[str, Any]) -> List[DocumentSearchResult]:
+def document_search_impl(**inputs: Any) -> List[DocumentSearchResult]:
     """
     Search for relevant documents using the retrieval system.
 
@@ -185,9 +191,9 @@ def document_search_impl(inputs: Dict[str, Any]) -> List[DocumentSearchResult]:
 
 
 # Create the LangChain tool
-document_search_tool = Tool(
-    name="document_search",
+document_search_tool = StructuredTool.from_function(
     func=document_search_impl,
+    name="document_search",
     description="""Search for relevant documents using semantic similarity and BM25 retrieval.
     
     This tool can find documents based on:
