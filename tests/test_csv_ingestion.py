@@ -12,7 +12,7 @@ from sqlmodel import Session, create_engine, SQLModel
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from db.models import Vehicle
+from src.db.models import Vehicle
 from scripts.ingest_csv import process_vehicle_row
 
 
@@ -32,7 +32,9 @@ class TestCSVIngestion:
             "price": [18500.00, 16800.00, 19500.00],
             "bluetooth": ["Sí", "Sí", "No"],
             "car_play": ["Sí", "No", "Sí"],
-            "air_conditioning": ["Sí", "Sí", "Sí"],
+            "largo": [4.6, 4.5, 4.4],
+            "ancho": [1.8, 1.8, 1.8],
+            "altura": [1.5, 1.5, 1.4],
         }
 
     def test_process_vehicle_row(self, sample_csv_data):
@@ -51,7 +53,9 @@ class TestCSVIngestion:
         assert result["price"] == 18500.00
         assert result["features"]["bluetooth"] == True
         assert result["features"]["car_play"] == True
-        assert result["features"]["air_conditioning"] == True
+        assert result["largo"] == 4.6
+        assert result["ancho"] == 1.8
+        assert result["altura"] == 1.5
 
     def test_process_vehicle_row_with_missing_data(self):
         """Test processing row with missing optional data."""
@@ -73,7 +77,9 @@ class TestCSVIngestion:
         assert result["model"] == "cruze"
         assert result["version"] is None
         assert result["features"]["bluetooth"] == False
-        assert result["dims"] is None
+        assert result["largo"] is None
+        assert result["ancho"] is None
+        assert result["altura"] is None
 
     def test_process_vehicle_row_with_invalid_data(self):
         """Test processing row with invalid data."""
@@ -89,13 +95,13 @@ class TestCSVIngestion:
 
         row = pd.Series(row_data)
 
-        # Should handle invalid data gracefully
+        # Should handle invalid data gracefully with Pydantic validation
         result = process_vehicle_row(row)
 
-        assert result["stock_id"] == 0  # Default value
-        assert result["year"] == 0  # Default value
-        assert result["km"] == 0  # Default value
-        assert result["price"] == 0.0  # Default value
+        assert result["stock_id"] is None  # Invalid data returns None
+        assert result["year"] is None  # Invalid data returns None
+        assert result["km"] is None  # Invalid data returns None
+        assert result["price"] is None  # Invalid data returns None
         assert result["features"]["bluetooth"] == True
 
     def test_create_sample_csv_file(self):
@@ -109,6 +115,9 @@ class TestCSVIngestion:
             "price": [18500.00, 16800.00],
             "bluetooth": ["Sí", "No"],
             "car_play": ["Sí", "Sí"],
+            "largo": [4.6, 4.5],
+            "ancho": [1.8, 1.8],
+            "altura": [1.5, 1.5],
         }
 
         df = pd.DataFrame(sample_data)

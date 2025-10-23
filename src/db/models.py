@@ -8,22 +8,17 @@ class Vehicle(SQLModel, table=True):
     """Vehicle model for storing car inventory data."""
 
     stock_id: int = Field(primary_key=True, description="Unique stock identifier")
+    km: int = Field(description="Kilometers/mileage")
+    price: float = Field(description="Vehicle price")
     make: str = Field(description="Vehicle manufacturer (normalized)")
     model: str = Field(description="Vehicle model (normalized)")
     year: int = Field(description="Model year")
     version: Optional[str] = Field(default=None, description="Vehicle version/trim")
-    km: int = Field(description="Kilometers/mileage")
-    price: float = Field(description="Vehicle price")
+    largo: Optional[float] = Field(default=None, description="Vehicle length")
+    ancho: Optional[float] = Field(default=None, description="Vehicle width")
+    altura: Optional[float] = Field(default=None, description="Vehicle height")
     features: Dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column(JSON),
         description="Vehicle features (bluetooth, car_play, etc.)",
-    )
-    dims: Optional[Dict[str, Any]] = Field(
-        default=None, sa_column=Column(JSON), description="Vehicle dimensions"
-    )
-    raw_row: Dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSON),
-        description="Original CSV row data for reference",
     )

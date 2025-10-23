@@ -29,8 +29,9 @@ class TestVehicleModel:
             km=25000,
             price=18500.00,
             features={"bluetooth": True, "car_play": True},
-            dims={"length": 4.6, "width": 1.8, "height": 1.5},
-            raw_row={"stock_id": 1001, "make": "Toyota"},
+            largo=4.6,
+            ancho=1.8,
+            altura=1.5,
         )
 
         assert vehicle.stock_id == 1001
@@ -38,7 +39,9 @@ class TestVehicleModel:
         assert vehicle.model == "corolla"
         assert vehicle.year == 2020
         assert vehicle.features["bluetooth"] == True
-        assert vehicle.dims["length"] == 4.6
+        assert vehicle.largo == 4.6
+        assert vehicle.ancho == 1.8
+        assert vehicle.altura == 1.5
 
     def test_vehicle_with_minimal_data(self):
         """Test creating Vehicle with minimal required data."""
@@ -54,8 +57,9 @@ class TestVehicleModel:
         assert vehicle.stock_id == 1002
         assert vehicle.version is None
         assert vehicle.features == {}
-        assert vehicle.dims is None
-        assert vehicle.raw_row == {}
+        assert vehicle.largo is None
+        assert vehicle.ancho is None
+        assert vehicle.altura is None
 
 
 class TestDatabaseOperations:
@@ -113,12 +117,14 @@ class TestDatabaseOperations:
         # Update vehicle
         vehicle.price = 17000.00
         vehicle.features = {"bluetooth": True}
+        vehicle.largo = 4.5
         test_session.commit()
 
         # Verify update
         retrieved = test_session.get(Vehicle, 1002)
         assert retrieved.price == 17000.00
         assert retrieved.features["bluetooth"] == True
+        assert retrieved.largo == 4.5
 
     def test_vehicle_query(self, test_session):
         """Test querying vehicles from database."""

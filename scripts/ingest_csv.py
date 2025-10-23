@@ -10,16 +10,17 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
+from typing import Union
+
 import pandas as pd
 from sqlmodel import Session
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from db.models import Vehicle
-from db.database import engine, create_db_and_tables
-from utils.normalization import normalize_text, parse_boolean, safe_int, safe_float
+from src.db.models import Vehicle
+from src.db.database import engine, create_db_and_tables
 
 
 # Configure logging
@@ -34,9 +35,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def parse_boolean(value: Union[str, int, bool, None]) -> bool:
+    """
+    Parse various string representations to boolean.
+
+    Args:
+        value: Value to parse (string, int, bool, or None)
+
+    Returns:
+        Boolean value
+    """
+    if isinstance(value, bool):
+        return value
+
+    if value is None:
+        return False
+
+    # Convert to string and normalize
+    str_value = str(value).lower().strip()
+
+    # Check for truthy values
+    truthy_values = ["sí", "si", "yes", "true", "1", "verdadero", "v"]
+    return str_value in truthy_values
+
+
 def process_vehicle_row(row: pd.Series) -> Dict[str, Any]:
     """
-    Process a single CSV row and return normalized vehicle data.
+    Process a single CSV row and return normalized vehicle data using Pydantic.
 
     Args:
         row: Pandas Series representing a CSV row
@@ -45,58 +70,23 @@ def process_vehicle_row(row: pd.Series) -> Dict[str, Any]:
         Dictionary with normalized vehicle data
     """
     try:
-        # Extract and normalize basic fields
-        stock_id = safe_int(row.get("stock_id"))
-        make = normalize_text(row.get("make"))
-        model = normalize_text(row.get("model"))
-        year = safe_int(row.get("year"))
-        version = (
-            normalize_text(row.get("version")) if pd.notna(row.get("version")) else None
-        )
-        km = safe_int(row.get("km"))
-        price = safe_float(row.get("price"))
-
         # Process features
         features = {}
-        feature_columns = [
-            "bluetooth",
-            "car_play",
-            "air_conditioning",
-            "power_steering",
-            "power_windows",
-            "central_locking",
-            "alarm",
-            "radio",
-        ]
+        feature_columns = ["bluetooth", "car_play"]
 
         for feature in feature_columns:
             if feature in row:
                 features[feature] = parse_boolean(row[feature])
 
-        # Process dimensions if available
-        dims = None
-        if "dims" in row and pd.notna(row["dims"]):
-            try:
-                dims = (
-                    eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-                )
-            except:
-                dims = None
-
-        # Store raw row data
-        raw_row = row.to_dict()
-
         return {
-            "stock_id": stock_id,
-            "make": make,
-            "model": model,
-            "year": year,
-            "version": version,
-            "km": km,
-            "price": price,
+            "stock_id": row.get("stock_id"),
+            "make": row.get("make"),
+            "model": row.get("model"),
+            "year": row.get("year"),
+            "version": row.get("version") if pd.notna(row.get("version")) else None,
+            "km": row.get("km"),
+            "price": row.get("price"),
             "features": features,
-            "dims": dims,
-            "raw_row": raw_row,
         }
 
     except Exception as e:

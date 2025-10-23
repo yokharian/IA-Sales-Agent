@@ -85,31 +85,27 @@ with get_session_sync() as session:
 
 The CSV file should contain the following columns:
 
-| Column           | Type   | Required | Description               |
-| ---------------- | ------ | -------- | ------------------------- |
-| stock_id         | int    | Yes      | Unique vehicle identifier |
-| make             | string | Yes      | Vehicle manufacturer      |
-| model            | string | Yes      | Vehicle model             |
-| year             | int    | Yes      | Model year                |
-| version          | string | No       | Vehicle version/trim      |
-| km               | int    | Yes      | Mileage in kilometers     |
-| price            | float  | Yes      | Vehicle price             |
-| bluetooth        | string | No       | Bluetooth feature (Sí/No) |
-| car_play         | string | No       | CarPlay feature (Sí/No)   |
-| air_conditioning | string | No       | AC feature (Sí/No)        |
-| power_steering   | string | No       | Power steering (Sí/No)    |
-| power_windows    | string | No       | Power windows (Sí/No)     |
-| central_locking  | string | No       | Central locking (Sí/No)   |
-| alarm            | string | No       | Alarm system (Sí/No)      |
-| radio            | string | No       | Radio (Sí/No)             |
-| dims             | string | No       | Dimensions as JSON string |
+| Column    | Type   | Required | Description               |
+| --------- | ------ | -------- | ------------------------- |
+| stock_id  | int    | Yes      | Unique vehicle identifier |
+| make      | string | Yes      | Vehicle manufacturer      |
+| model     | string | Yes      | Vehicle model             |
+| year      | int    | Yes      | Model year                |
+| version   | string | No       | Vehicle version/trim      |
+| km        | int    | Yes      | Mileage in kilometers     |
+| price     | float  | Yes      | Vehicle price             |
+| bluetooth | string | No       | Bluetooth feature (Sí/No) |
+| car_play  | string | No       | CarPlay feature (Sí/No)   |
+| largo     | float  | No       | Vehicle length in meters  |
+| ancho     | float  | No       | Vehicle width in meters   |
+| altura    | float  | No       | Vehicle height in meters  |
 
 ### Example CSV
 
 ```csv
-stock_id,make,model,year,version,km,price,bluetooth,car_play,air_conditioning
-1001,Toyota,Corolla,2020,LE,25000,18500.00,Sí,Sí,Sí
-1002,Honda,Civic,2019,LX,32000,16800.00,Sí,No,Sí
+stock_id,km,price,make,model,year,version,bluetooth,largo,ancho,altura,car_play
+243587,77400,461999.0,Volkswagen,Touareg,2018,3.0 V6 TDI WOLFSBURG EDITION AUTO 4WD,Sí,4801.0,1940.0,1709.0,
+229702,102184,660999.0,Land Rover,Discovery Sport,2018,2.0 HSE LUXURY AUTO 4WD,Sí,4599.0,2069.0,1724.0,
 ```
 
 ## Data Normalization
@@ -118,15 +114,16 @@ The system automatically normalizes data:
 
 - **Text Fields**: Converted to lowercase, accents removed using unidecode
 - **Boolean Fields**: "Sí", "si", "yes", "true", "1" → True; others → False
-- **Numeric Fields**: Safe conversion with fallback to default values
+- **Numeric Fields**: Safe conversion with fallback to None for invalid data
 - **Missing Data**: Optional fields default to None or empty values
 
 ## Error Handling
 
 - **Invalid Data**: Logged to `ingestion_errors.log` without halting processing
 - **Missing Columns**: Gracefully handled with default values
-- **Type Mismatches**: Safe conversion with fallback values
+- **Type Mismatches**: Safe conversion with fallback to None
 - **Database Errors**: Transaction rollback with detailed error logging
+- **Pydantic Validation**: TypeAdapter.validate_python ensures data integrity
 
 ## Testing
 
@@ -146,24 +143,23 @@ pytest tests/test_csv_ingestion.py -v
 
 ```
 src/
-├── models/
-│   └── vehicle.py          # SQLModel Vehicle definition
 ├── db/
-│   ├── database.py         # Database connection and session management
-│   └── vehicle_dao.py     # Data access layer
+│   ├── models.py             # SQLModel Vehicle definition
+│   ├── database.py          # Database connection and session management
+│   └── vehicle_dao.py       # Data access layer
 └── utils/
-    └── normalization.py   # Data normalization functions
+    └── normalization.py     # Data normalization functions
 
 scripts/
-├── ingest_csv.py         # Main CSV ingestion script
-├── init_db.py           # Database initialization
-└── run_tests.py         # Test runner
+├── ingest_csv.py           # Main CSV ingestion script
+├── init_db.py             # Database initialization
+└── run_tests.py           # Test runner
 
 tests/
-├── test_normalization.py # Normalization function tests
-├── test_vehicle_model.py # Model and database tests
-├── test_csv_ingestion.py # CSV processing tests
-└── test_vehicle_dao.py   # Data access layer tests
+├── test_normalization.py  # Normalization function tests
+├── test_vehicle_model.py  # Model and database tests
+├── test_csv_ingestion.py  # CSV processing tests
+└── test_vehicle_dao.py    # Data access layer tests
 ```
 
 ## Performance Considerations
@@ -171,6 +167,7 @@ tests/
 - **Batch Processing**: Default batch size of 500 rows for optimal performance
 - **Connection Pooling**: SQLAlchemy connection pooling for database efficiency
 - **Memory Management**: Streaming CSV processing for large files
+- **Pydantic Validation**: Efficient validation using TypeAdapter.validate_python
 
 ## Next Steps
 
