@@ -2,10 +2,63 @@
 Data access layer for vehicle operations.
 """
 
-from typing import Optional, List
-from sqlmodel import Session, select
+from typing import List, Optional
+
+from sqlalchemy import distinct
+from sqlmodel import Session
+from sqlmodel import select
 
 from db.models import Vehicle
+from src.db.database import get_session_sync
+
+
+def get_makes(limit: int = 5) -> List[str]:
+    """
+    Get distinct vehicle makes from the database.
+
+    Args:
+        limit: Maximum number of makes to return
+
+    Returns:
+        List of unique vehicle makes
+    """
+    with get_session_sync() as session:
+        stmt = select(distinct(Vehicle.make)).limit(limit)
+        results = session.exec(stmt).all()
+        return list(results)
+
+
+def get_models(limit: int = 5) -> List[str]:
+    """
+    Get distinct vehicle models from the database.
+
+    Args:
+        limit: Maximum number of models to return
+
+    Returns:
+        List of unique vehicle models
+    """
+    with get_session_sync() as session:
+        stmt = select(distinct(Vehicle.model)).limit(limit)
+        results = session.exec(stmt).all()
+        return list(results)
+
+
+def get_models_by_make(make: str, limit: int = 5) -> List[str]:
+    """
+    Get distinct vehicle models for a specific make.
+
+    Args:
+        make: Vehicle make to filter by
+        limit: Maximum number of models to return
+
+    Returns:
+        List of unique vehicle models for the specified make
+    """
+    with get_session_sync() as session:
+        stmt = select(distinct(Vehicle.model)).where(Vehicle.make == make).limit(limit)
+        results = session.exec(stmt).all()
+        return list(results)
 
 
 def get_vehicle_by_id(db: Session, stock_id: int) -> Optional[Vehicle]:

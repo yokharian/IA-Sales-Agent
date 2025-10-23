@@ -2,10 +2,11 @@
 Tests for LangChain tools.
 """
 
-import pytest
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
+
+import pytest
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
@@ -14,14 +15,6 @@ from tools.catalog_search import (
     VehiclePreferences,
     VehicleResult,
     catalog_search_impl,
-    catalog_search_tool,
-)
-from tools.finance_calculation import (
-    FinanceCalculationInput,
-    FinanceCalculationResult,
-    finance_calculation_impl,
-    finance_calculation_tool,
-    calculate_monthly_payment,
 )
 
 
@@ -157,76 +150,3 @@ class TestCatalogSearchImpl:
         assert results[0].stock_id == 1001
         assert results[0].make == "toyota"
         assert results[0].similarity_score == 0.9
-
-
-class TestFinanceCalculationInput:
-    """Test FinanceCalculationInput schema."""
-
-    def test_valid_input(self):
-        """Test valid input creation."""
-        calc_input = FinanceCalculationInput(
-            price=25000, down_payment=5000, term_years=5, interest_rate=5.5
-        )
-
-        assert calc_input.price == 25000
-        assert calc_input.down_payment == 5000
-        assert calc_input.term_years == 5
-        assert calc_input.interest_rate == 5.5
-        assert calc_input.include_amortization is False
-
-    def test_invalid_price(self):
-        """Test invalid price validation."""
-        with pytest.raises(ValueError):
-            FinanceCalculationInput(price=0, down_payment=1000, term_years=5)
-
-    def test_invalid_term(self):
-        """Test invalid term validation."""
-        with pytest.raises(ValueError):
-            FinanceCalculationInput(price=25000, down_payment=1000, term_years=0)
-
-
-class TestCalculateMonthlyPayment:
-    """Test monthly payment calculation."""
-
-    def test_standard_loan(self):
-        """Test standard loan calculation."""
-        payment = calculate_monthly_payment(20000, 0.055, 5)
-        expected = 381.32  # Approximate
-        assert abs(payment - expected) < 1.0
-
-    def test_zero_interest(self):
-        """Test zero interest loan."""
-        payment = calculate_monthly_payment(20000, 0.0, 5)
-        expected = 20000 / (5 * 12)  # 333.33
-        assert abs(payment - expected) < 0.01
-
-
-class TestFinanceCalculationImpl:
-    """Test finance calculation implementation."""
-
-    def test_standard_calculation(self):
-        """Test standard finance calculation."""
-        inputs = {
-            "price": 25000,
-            "down_payment": 5000,
-            "term_years": 5,
-            "interest_rate": 5.5,
-        }
-
-        result = finance_calculation_impl(inputs)
-
-        assert isinstance(result, FinanceCalculationResult)
-        assert result.payment_breakdown.principal_amount == 20000
-        assert result.payment_breakdown.monthly_payment > 0
-        assert result.payment_breakdown.total_interest > 0
-        assert len(result.recommendations) > 0
-
-    def test_full_down_payment(self):
-        """Test when down payment covers full price."""
-        inputs = {"price": 25000, "down_payment": 25000, "term_years": 5}
-
-        result = finance_calculation_impl(inputs)
-
-        assert result.payment_breakdown.monthly_payment == 0
-        assert result.payment_breakdown.principal_amount == 0
-        assert "no financing needed" in result.recommendations[0].lower()

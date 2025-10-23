@@ -6,14 +6,86 @@ with advanced filtering, fuzzy matching, and structured results.
 """
 
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
-from langchain_core.tools import Tool
-from sqlalchemy import and_, or_, text
-from sqlmodel import Session, select
 
-from search.service import VehicleSearchService
-from db.models import Vehicle
+import rapidfuzz
+from langchain_core.tools import Tool
+from pydantic import BaseModel, Field
+
 from db.database import get_session_sync
+from db.models import Vehicle
+from db.vehicle_dao import get_makes, get_models, get_models_by_make, search_vehicles
+
+
+def _fuzzy_search_make(make_input: str, threshold: int = 80) -> Optional[str]:
+    """
+    Find the best matching make using fuzzy search.
+
+    Args:
+        make_input: User input for make
+        threshold: Minimum similarity score (0-100)
+
+    Returns:
+        Best matching make or None if no good match found
+    """
+    # Get all distinct makes from database using DAO
+    all_makes = get_makes(limit=1000)  # Get all makes, not just limited set
+
+    if not all_makes:
+        return None
+
+    # Find best match using rapidfuzz
+    best_match = rapidfuzz.process.extractOne(
+        make_input.lower().strip(),
+        [make.lower() for make in all_makes],
+        score_cutoff=threshold,
+    )
+
+    if best_match:
+        # Return the original case make from database
+        for make in all_makes:
+            if make.lower() == best_match[0]:
+                return make
+
+    return None
+
+
+def _fuzzy_search_model(
+    model_input: str, make: Optional[str] = None, threshold: int = 80
+) -> Optional[str]:
+    """
+    Find the best matching model using fuzzy search.
+
+    Args:
+        model_input: User input for model
+        make: Optional make to filter models by
+        threshold: Minimum similarity score (0-100)
+
+    Returns:
+        Best matching model or None if no good match found
+    """
+    # Get all distinct models from database using DAO
+    if make:
+        all_models = get_models_by_make(make, limit=1000)  # Get all models for the make
+    else:
+        all_models = get_models(limit=1000)  # Get all models
+
+    if not all_models:
+        return None
+
+    # Find best match using rapidfuzz
+    best_match = rapidfuzz.process.extractOne(
+        model_input.lower().strip(),
+        [model.lower() for model in all_models],
+        score_cutoff=threshold,
+    )
+
+    if best_match:
+        # Return the original case model from database
+        for model in all_models:
+            if model.lower() == best_match[0]:
+                return model
+
+    return None
 
 
 class VehiclePreferences(BaseModel):
@@ -38,7 +110,7 @@ class VehiclePreferences(BaseModel):
     )
     features: Optional[List[str]] = Field(
         default=None,
-        description="Required features (e.g., ['bluetooth', 'air_conditioning'])",
+        description="Required features (e.g., ['bluetooth', 'air_play'])",
     )
     sort_by: Optional[str] = Field(
         default="relevance",
@@ -60,9 +132,6 @@ class VehicleResult(BaseModel):
     price: float = Field(description="Price in USD")
     km: int = Field(description="Mileage in kilometers")
     features: Dict[str, bool] = Field(description="Available features")
-    similarity_score: float = Field(
-        description="Relevance score (0-1, higher is better)", ge=0, le=1
-    )
 
 
 def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
@@ -78,80 +147,95 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
     # Parse preferences
     prefs = VehiclePreferences(**preferences)
 
-    # Initialize search service
-    search_service = VehicleSearchService()
-    search_service.initialize()
+    # Variables to store fuzzy-matched values
+    matched_make, matched_model = None, None
 
-    # Build SQL query with hard filters
+    # Fuzzy search for make if provided
+    if prefs.make:
+        matched_make = _fuzzy_search_make(prefs.make)
+        if not matched_make:
+            # If no good match found, return empty results
+            return []
+
+        # If model is also provided, do fuzzy search for model within the matched make
+        if prefs.model:
+            matched_model = _fuzzy_search_model(prefs.model, matched_make)
+            if not matched_model:
+                # If no good model match found, return empty results
+                return []
+
+    elif prefs.model:
+        # If only model is provided, do fuzzy search across all models
+        matched_model = _fuzzy_search_model(prefs.model)
+        if not matched_model:
+            # If no good match found, return empty results
+            return []
+
+    # Use DAO search_vehicles method for database query
     with get_session_sync() as session:
-        query = select(Vehicle)
-        filters = []
+        # Prepare search parameters for DAO
+        search_params = {}
+
+        # Use fuzzy-matched make if available
+        if matched_make:
+            search_params["make"] = matched_make
+
+        # Use fuzzy-matched model if available
+        if matched_model:
+            search_params["model"] = matched_model
 
         # Price filters
         if prefs.budget_min is not None:
-            filters.append(Vehicle.price >= prefs.budget_min)
+            search_params["min_price"] = prefs.budget_min
         if prefs.budget_max is not None:
-            filters.append(Vehicle.price <= prefs.budget_max)
+            search_params["max_price"] = prefs.budget_max
 
-        # Mileage filter
-        if prefs.km_max is not None:
-            filters.append(Vehicle.km <= prefs.km_max)
+        # Note: DAO doesn't have km_max filter, so we'll filter after query
+        # Note: DAO doesn't have features filter, so we'll filter after query
 
-        # Feature filters using JSONB
-        if prefs.features:
-            for feature in prefs.features:
-                # Use raw SQL for JSONB boolean comparison
-                filters.append(text(f"vehicle.features->>'{feature}' = 'true'"))
-
-        # Apply filters
-        if filters:
-            query = query.where(and_(*filters))
-
-        # Execute query to get candidates
-        candidates = list(session.exec(query))
+        # Execute search using DAO
+        candidates: List[Vehicle] = search_vehicles(session, **search_params)
 
     if not candidates:
         return []
 
-    # Apply hybrid search if make/model specified
-    if prefs.make or prefs.model:
-        search_query = f"{prefs.make or ''} {prefs.model or ''}".strip()
-        search_results = search_service.search_vehicles(
-            query=search_query,
-            max_results=prefs.max_results * 2,  # Get more for sorting
-        )
+    # Apply additional filters that DAO doesn't support
+    filtered_candidates = []
+    for vehicle in candidates:
+        # Apply km_max filter
+        if prefs.km_max is not None and vehicle.km > prefs.km_max:
+            continue
 
-        # Create a mapping of stock_id to search result
-        search_map = {result["stock_id"]: result for result in search_results}
+        # Apply features filter
+        if prefs.features:
+            vehicle_has_all_features = True
+            for feature in prefs.features:
+                if not vehicle.features or not vehicle.features.get(feature, False):
+                    vehicle_has_all_features = False
+                    break
+            if not vehicle_has_all_features:
+                continue
 
-        # Filter candidates to only include those found by search
-        ranked_candidates = []
-        for candidate in candidates:
-            if candidate.stock_id in search_map:
-                search_result = search_map[candidate.stock_id]
-                ranked_candidates.append((candidate, search_result["relevance_score"]))
+        filtered_candidates.append(vehicle)
 
-        # Sort by search score
-        ranked_candidates.sort(key=lambda x: x[1], reverse=True)
-    else:
-        # No make/model search, just use candidates as-is
-        ranked_candidates = [(candidate, 1.0) for candidate in candidates]
+    if not filtered_candidates:
+        return []
 
     # Apply sorting
     if prefs.sort_by == "price_low":
-        ranked_candidates.sort(key=lambda x: x[0].price)
+        filtered_candidates.sort(key=lambda x: x.price)
     elif prefs.sort_by == "price_high":
-        ranked_candidates.sort(key=lambda x: x[0].price, reverse=True)
+        filtered_candidates.sort(key=lambda x: x.price, reverse=True)
     elif prefs.sort_by == "year_new":
-        ranked_candidates.sort(key=lambda x: x[0].year, reverse=True)
+        filtered_candidates.sort(key=lambda x: x.year, reverse=True)
     elif prefs.sort_by == "km_low":
-        ranked_candidates.sort(key=lambda x: x[0].km)
-    # 'relevance' is already sorted by search score
+        filtered_candidates.sort(key=lambda x: x.km)
+    else:  # 'model name'
+        filtered_candidates.sort(key=lambda x: x.model, reverse=True)
 
     # Format results
     results = []
-    for vehicle, score in ranked_candidates[: prefs.max_results]:
-
+    for vehicle in filtered_candidates[: prefs.max_results]:
         result = VehicleResult(
             stock_id=vehicle.stock_id,
             make=vehicle.make,
@@ -161,7 +245,6 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
             price=vehicle.price,
             km=vehicle.km,
             features=vehicle.features or {},
-            similarity_score=score,
         )
         results.append(result)
 

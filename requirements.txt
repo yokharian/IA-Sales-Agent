@@ -1,3 +1,5 @@
+sqlalchemy
+langchain-chroma
 pydantic
 langchain-classic
 openai

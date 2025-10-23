@@ -19,8 +19,8 @@ from sqlmodel import Session
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from src.db.models import Vehicle
-from src.db.database import engine, create_db_and_tables
+from db.models import Vehicle
+from db.database import engine, create_db_and_tables
 
 
 # Configure logging

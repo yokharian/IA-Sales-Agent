@@ -12,7 +12,6 @@ from sqlmodel import Session, create_engine, SQLModel
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from db.models import Vehicle
-from db.database import get_session_sync
 
 
 class TestVehicleModel:
