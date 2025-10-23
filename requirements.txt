@@ -25,3 +25,8 @@ unidecode
 # Search and vector embedding dependencies
 rapidfuzz
 langchain-community
+
+# WhatsApp and web server dependencies
+fastapi
+uvicorn[standard]
+twilio

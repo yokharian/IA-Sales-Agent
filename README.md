@@ -1,49 +1,62 @@
-# Local RAG System (ChromaDB + HuggingFace)
+# 🚗 Commercial Agent - AI Vehicle Sales Assistant
 
-A lightweight Python Retrieval-Augmented Generation (RAG) helper that lets you query your local document collection using natural language. It builds embeddings with HuggingFace and performs similarity search with ChromaDB to return the most relevant context for your query.
+An intelligent AI-powered vehicle sales assistant with WhatsApp integration, vector search capabilities, and fuzzy matching. Built with LangChain, PostgreSQL, and ChromaDB for production-ready automotive e-commerce.
+
+![diagram.svg](docs/diagram.svg)
 
 ## 🌟 Features
 
-- Document loading from a local folder (.txt and .md supported)
-- Smart chunking with LangChain's RecursiveCharacterTextSplitter
-- Local embeddings via HuggingFace (all-MiniLM-L6-v2)
-- Fast similarity search using ChromaDB
-- Minimal API surface and easy-to-read code
+- 🤖 **AI-Powered Agent**: ReAct framework with LangChain for intelligent conversations
+- 📱 **WhatsApp Integration**: Bidirectional communication via Twilio
+- 🔍 **Smart Vehicle Search**: Fuzzy matching with typo tolerance (rapidfuzz)
+- 📄 **Document Search**: RAG-powered semantic search for automotive documentation
+- 💾 **PostgreSQL Backend**: Robust vehicle catalog with SQLModel
+- 🎯 **Feature Filtering**: Search by features, price, mileage, make, and model
+- 🌐 **FastAPI Server**: Production-ready webhook handling
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Python 3.8 or higher
+- PostgreSQL 12+ (optional, for vehicle catalog)
+- Twilio account (optional, for WhatsApp)
+- OpenAI API key (for AI agent)
 
 ### Installation
 
-1. Clone the repository:
-
+1. **Clone the repository:**
    ```bash
    git clone <repository-url>
    cd commercial-agent
    ```
 
-2. Create a virtual environment:
-
+2. **Create a virtual environment:**
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. Install dependencies:
-
+3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Add your documents:
-   Place your `.txt` or `.md` files in the `data/documents/` directory.
-
-5. Run a quick test:
+4. **Set up environment variables:**
    ```bash
-   python test.py
+   cp env.example .env
+   # Edit .env with your credentials
+   ```
+
+5. **Initialize the database (optional):**
+   ```bash
+   createdb commercial_agent
+   python scripts/ingest_csv.py data/sample_vehicles.csv --create-tables
+   ```
+
+6. **Run the demo:**
+   ```bash
+   python demo.py --mode interactive
    ```
 
 ## 📁 Project Structure
@@ -52,78 +65,142 @@ A lightweight Python Retrieval-Augmented Generation (RAG) helper that lets you q
 commercial-agent/
 │
 ├── src/
-│   ├── __init__.py
-│   ├── document_loader.py    # Loads and chunks local documents
-│   ├── retrieval_system.py   # ChromaDB vector store + similarity search
-│   └── rag_system.py         # Orchestration and simple query interface
+│   ├── main.py                    # AI Agent with ReAct framework
+│   ├── whatsapp_server.py         # FastAPI WhatsApp webhook server
+│   ├── db/                        # Database layer
+│   └── tools/                     # LangChain tools
+│
+├── scripts/
+│   ├── ingest_csv.py              # CSV vehicle data ingestion
+│   └── run_tests.sh               # Test runner
 │
 ├── data/
-│   └── documents/            # Place your .txt or .md files here
+│   ├── documents/                 # Documents for RAG
+│   ├── sample_vehicles.csv        # Sample vehicle data
+│   └── chroma/                    # ChromaDB vector store
 │
-├── docs/
-│   └── prd.md                # Product Requirements Document
-│
-├── requirements.txt
-├── test.py
-└── README.md
+├── docs/                          # Documentation
+├── tests/                         # Test suite
+├── demo.py                        # Interactive demo
+└── requirements.txt
 ```
 
 ## 💻 Usage
 
-Basic example to retrieve relevant context for a question:
+### Interactive Chat
 
-```python
-from src.rag_system import RAGSystem
+```bash
+python demo.py --mode interactive
+```
 
-# Initialize the RAG system (defaults to data/documents)
-rag = RAGSystem()
+Example queries:
+```
+You: Find me Toyota vehicles under $300,000
+You: I'm looking for a Honda with Bluetooth and CarPlay
+You: ¿Tienes vehículos Volkswagen disponibles?
+```
 
-# Get context for your query from top-2 similar chunks
-question = "What is the Beta Eco Initiative?"
-context = rag.obtain_knowledge_base(question)
-print(context)
+### WhatsApp Server
+
+```bash
+python src/whatsapp_server.py --host 0.0.0.0 --port 5000
+```
+
+Configure Twilio webhook URL: `http://your-server:5000/whatsapp/webhook`
+
+### CSV Data Ingestion
+
+```bash
+python scripts/ingest_csv.py data/sample_vehicles.csv --batch-size 500 --create-tables
 ```
 
 ## ⚙️ Configuration
 
-- Data folder: defaults to `data/documents` (can be changed via `RAGSystem(data_dir=...)`).
-- Chunking: defaults to `chunk_size=500`, `chunk_overlap=100` (see DocumentLoader.load_documents).
-- Embeddings: HuggingFace model `all-MiniLM-L6-v2` with normalized embeddings (see retrieval_system.py).
-- Retrieval: returns top-2 most similar chunks by relevance score.
+### Environment Variables
 
-Note: An optional environment variable `OPENAI_MODEL` is read by `RAGSystem` but is not required for current functionality (no OpenAI API calls are made).
+Create a `.env` file with:
+
+```bash
+# OpenAI (Required)
+OPENAI_API_KEY=sk-...
+
+# Twilio (Optional, for WhatsApp)
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890
+
+# Database (Optional)
+DATABASE_URL=postgresql://user:password@localhost:5432/commercial_agent
+```
+
+### Vector Search Settings
+
+- **Embeddings**: HuggingFace `all-MiniLM-L6-v2`
+- **Vector Store**: ChromaDB (persisted to `data/chroma/`)
+- **Chunking**: 500 chars with 100 char overlap
+- **Retrieval**: Top-K semantic search
+
+### Fuzzy Matching
+
+- **Engine**: rapidfuzz with token-based matching
+- **Threshold**: 80% similarity score
+- **Scope**: Make and model searches
 
 ## 🔧 How It Works
 
-1. Documents are loaded from `data/documents` (supports .txt and .md, skips hidden files)
-2. Text is chunked using RecursiveCharacterTextSplitter (default 500/100)
-3. Each chunk is embedded with HuggingFace (all-MiniLM-L6-v2)
-4. ChromaDB performs similarity search to find the most relevant chunks for a query
-5. The selected chunks are concatenated and returned as a context string
+### Vehicle Search Flow
+1. User query received (WhatsApp or CLI)
+2. LangChain ReAct agent analyzes intent
+3. Fuzzy matching normalizes make/model (handles typos)
+4. PostgreSQL query filters by price, features, mileage
+5. Results ranked and formatted
+6. Response sent back to user
 
-## 📊 Defaults
+### Document Search Flow
+1. Documents chunked and embedded (HuggingFace)
+2. Stored in ChromaDB vector store
+3. Semantic similarity search on user query
+4. Relevant chunks retrieved and ranked
+5. Context provided to agent for response generation
 
-- Chunk size: 500 characters
-- Chunk overlap: 100 characters
-- Retrieval: Top-2 chunks
-- Embeddings: all-MiniLM-L6-v2 (local, downloaded via HuggingFace if not cached)
+## 🧪 Testing
 
-## ⚠️ Current Limitations
+```bash
+# Run all tests
+python scripts/run_tests.sh
 
-- ChromaDB index is persisted to data/chroma; repeated runs may append duplicate chunks if documents are re-ingested
-- No caching: embeddings are recreated on each run
-- This repo does not generate an LLM answer; it returns the most relevant context
+# Run specific test suites
+pytest tests/test_catalog_search_tool.py -v
+pytest tests/test_document_search_tool.py -v
+```
 
-## 🔒 Security & Privacy
+## 📊 API Endpoints
 
-- No API keys are required for core functionality
-- HuggingFace model files may be downloaded to your environment when first used
-- Documents are processed locally; review your environment security for sensitive data
+When running the WhatsApp server:
+
+- `POST /whatsapp/webhook` - Handle incoming WhatsApp messages
+- `GET /health` - Health check endpoint
+- `POST /send-message` - Send WhatsApp message programmatically
+- `GET /docs` - FastAPI auto-generated documentation
+- `GET /redoc` - ReDoc API documentation
 
 ## 📚 Documentation
 
-- Product Requirements Document: [docs/prd.md](docs/prd.md)
-- LangChain Documentation: https://python.langchain.com/docs/introduction/
+Comprehensive documentation available in the `docs/` directory:
+
+- [System Overview & Architecture](docs/MAIN_PRD.md)
+- [AI Agent Guidelines](docs/agents.md)
+- [Vehicle Catalog Search Tool](docs/catalog_search_prd.md)
+- [Document Search Tool](docs/document_search_prd.md)
+- [CSV Ingestion Guide](docs/csv_ingestion.md)
+- [WhatsApp Setup Guide](docs/whatsapp_setup.md)
+- [Documentation Index](docs/INDEX.md)
+
+### External Resources
+- [LangChain Documentation](https://python.langchain.com/docs/introduction/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Twilio WhatsApp API](https://www.twilio.com/docs/whatsapp)
+- [ChromaDB Documentation](https://docs.trychroma.com/)
 
 ## 📄 License
 
@@ -131,5 +208,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- HuggingFace and ChromaDB for open-source tooling
-- The open-source community for inspiration and utilities
+- **LangChain** for the agent framework and tool ecosystem
+- **HuggingFace** for local embeddings and NLP models
+- **ChromaDB** for vector storage
+- **Twilio** for WhatsApp Business API
+- **FastAPI** for modern API framework
+- **RapidFuzz** for fuzzy matching capabilities
+- The open-source community for inspiration and tools

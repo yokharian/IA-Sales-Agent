@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  commercial-agent:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      # Database configuration
+      - DATABASE_URL=postgresql://postgres:password@db:5432/commercial_agent
+      
+      # Twilio configuration (set these in your .env file)
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_WHATSAPP_NUMBER=${TWILIO_WHATSAPP_NUMBER}
+      
+      # OpenAI configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Python configuration
+      - PYTHONPATH=/app/src
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=commercial_agent
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
