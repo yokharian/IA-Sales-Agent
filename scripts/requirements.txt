@@ -2,3 +2,6 @@ markdownify
 beautifulsoup4
 certifi
 langchain-community
+sqlmodel
+pandas
+sqlalchemy

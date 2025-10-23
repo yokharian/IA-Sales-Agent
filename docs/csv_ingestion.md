@@ -59,7 +59,7 @@ python scripts/ingest_csv.py data/sample_vehicles.csv --create-tables
 ```python
 from src.db.database import get_session_sync, create_db_and_tables
 from src.db.vehicle_dao import get_vehicle_by_id, search_vehicles
-from src.db.models import Vehicle
+from db.database import Vehicle
 
 # Create tables
 create_db_and_tables()

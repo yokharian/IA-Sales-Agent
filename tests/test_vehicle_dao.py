@@ -10,7 +10,7 @@ from sqlmodel import Session, create_engine, SQLModel
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from db.models import Vehicle
+from db.database import Vehicle
 from db.vehicle_dao import (
     get_vehicle_by_id,
     get_vehicles_by_make_model,

@@ -11,7 +11,7 @@ from sqlmodel import Session, create_engine, SQLModel
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from db.models import Vehicle
+from db.database import Vehicle
 
 
 class TestVehicleModel:

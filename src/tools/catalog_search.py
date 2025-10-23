@@ -11,12 +11,11 @@ import rapidfuzz
 from langchain_core.tools import Tool
 from pydantic import BaseModel, Field
 
-from db.database import get_session_sync
-from db.models import Vehicle
+from db.database import get_session_sync, Vehicle
 from db.vehicle_dao import get_makes, get_models, get_models_by_make, search_vehicles
 
 
-def _fuzzy_search_make(make_input: str, threshold: int = 80) -> Optional[str]:
+def fuzzy_search_make(make_input: str, threshold: int = 80) -> Optional[str]:
     """
     Find the best matching make using fuzzy search.
 
@@ -49,7 +48,7 @@ def _fuzzy_search_make(make_input: str, threshold: int = 80) -> Optional[str]:
     return None
 
 
-def _fuzzy_search_model(
+def fuzzy_search_model(
     model_input: str, make: Optional[str] = None, threshold: int = 80
 ) -> Optional[str]:
     """
@@ -114,7 +113,7 @@ class VehiclePreferences(BaseModel):
     )
     sort_by: Optional[str] = Field(
         default="relevance",
-        description="Sort results by: 'relevance', 'price_low', 'price_high', 'year_new', 'km_low'",
+        description="Sort results by: 'price_low', 'price_high', 'year_new', 'km_low'",
     )
     max_results: Optional[int] = Field(
         default=5, description="Maximum number of results to return", ge=1, le=20
@@ -152,21 +151,21 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
 
     # Fuzzy search for make if provided
     if prefs.make:
-        matched_make = _fuzzy_search_make(prefs.make)
+        matched_make = fuzzy_search_make(prefs.make)
         if not matched_make:
             # If no good match found, return empty results
             return []
 
         # If model is also provided, do fuzzy search for model within the matched make
         if prefs.model:
-            matched_model = _fuzzy_search_model(prefs.model, matched_make)
+            matched_model = fuzzy_search_model(prefs.model, matched_make)
             if not matched_model:
                 # If no good model match found, return empty results
                 return []
 
     elif prefs.model:
         # If only model is provided, do fuzzy search across all models
-        matched_model = _fuzzy_search_model(prefs.model)
+        matched_model = fuzzy_search_model(prefs.model)
         if not matched_model:
             # If no good match found, return empty results
             return []
@@ -190,7 +189,10 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
         if prefs.budget_max is not None:
             search_params["max_price"] = prefs.budget_max
 
-        # Note: DAO doesn't have km_max filter, so we'll filter after query
+        # km filter
+        if prefs.km_max is not None:
+            search_params["km_max"] = prefs.km_max
+
         # Note: DAO doesn't have features filter, so we'll filter after query
 
         # Execute search using DAO
@@ -202,10 +204,6 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
     # Apply additional filters that DAO doesn't support
     filtered_candidates = []
     for vehicle in candidates:
-        # Apply km_max filter
-        if prefs.km_max is not None and vehicle.km > prefs.km_max:
-            continue
-
         # Apply features filter
         if prefs.features:
             vehicle_has_all_features = True
@@ -230,7 +228,7 @@ def catalog_search_impl(preferences: Dict[str, Any]) -> List[VehicleResult]:
         filtered_candidates.sort(key=lambda x: x.year, reverse=True)
     elif prefs.sort_by == "km_low":
         filtered_candidates.sort(key=lambda x: x.km)
-    else:  # 'model name'
+    else:  # 'model' by default
         filtered_candidates.sort(key=lambda x: x.model, reverse=True)
 
     # Format results
@@ -264,11 +262,6 @@ catalog_search_tool = Tool(
     - Required features (features)
     - Sorting preferences (sort_by)
     
-    The tool uses hybrid search combining semantic similarity, keyword matching,
-    and fuzzy text matching to handle typos and find relevant vehicles even
-    with imperfect input.
-    
-    Returns up to 20 vehicles with relevance scores
-    explaining why each vehicle matches the criteria.""",
+    Returns up to 20 vehicles.""",
     args_schema=VehiclePreferences,
 )

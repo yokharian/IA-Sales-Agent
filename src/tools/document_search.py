@@ -2,38 +2,20 @@ from __future__ import annotations
 
 from typing import List, Optional, Dict, Any
 
-from dotenv import load_dotenv
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.retrievers import (
-    ContextualCompressionRetriever,
     EnsembleRetriever,
 )
-from langchain_classic.retrievers.document_compressors import (
-    EmbeddingsFilter,
-    DocumentCompressorPipeline,
-    LLMChainExtractor,
-)
-from langchain_community.document_transformers import EmbeddingsRedundantFilter
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import Tool
-from langchain_text_splitters import CharacterTextSplitter
 from pydantic import BaseModel, Field
+from db.document_loader import DocumentLoader
 
-load_dotenv()
 
 from langchain_openai import OpenAIEmbeddings
-
-SYSTEM_PROMPT = "Eres un asistente de QA." + (
-    " Usa SÓLO el contexto recuperado para responder. "
-    "Si no hay suficiente contexto o no estás seguro, di explícitamente que no lo sabes. "
-    "Cita las fuentes con el campo 'source' de cada fragmento.\n"
-    "Contexto:\n{context}"
-)
-
-from document_loader import DocumentLoader
 
 
 class RetrievalSystem:
@@ -43,7 +25,6 @@ class RetrievalSystem:
         data_dir: str,
         llm: Optional[BaseChatModel] = None,
         embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
-        system_prompt=SYSTEM_PROMPT,
     ):
         self._retriever = None
         self._bm25_retriever = None
@@ -53,7 +34,6 @@ class RetrievalSystem:
 
         self.vector_store = None
         self.data_dir = data_dir
-        self.system_prompt = system_prompt
         self.embedding_function = embedding_function
         self.initialize_vector_database()
         self.initialize_retriever()

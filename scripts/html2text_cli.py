@@ -11,6 +11,11 @@ from langchain_community.document_loaders import AsyncHtmlLoader
 from langchain_community.document_transformers import MarkdownifyTransformer
 
 
+HERE = Path().parent
+DATA_FOLDER = HERE.parent.joinpath("data")
+DOCUMENTS_FOLDER = DATA_FOLDER.joinpath("documents").resolve(strict=True)
+
+
 def html_to_text(url: str) -> str:
     # 1) Load HTML from the web
     loader = AsyncHtmlLoader(url, header_template=None, verify_ssl=True)
@@ -34,7 +39,7 @@ def main():
         "-o",
         "--output",
         help="Output .md file (if not specified, prints to stdout)",
-        default=None,
+        default=DOCUMENTS_FOLDER,
     )
     args = parser.parse_args()
 

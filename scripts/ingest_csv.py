@@ -10,7 +10,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from typing import Union
 
 import pandas as pd
@@ -19,9 +19,12 @@ from sqlmodel import Session
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from db.models import Vehicle
-from db.database import engine, create_db_and_tables
+from db.database import engine, create_db_and_tables, Vehicle
 
+
+HERE = Path().parent
+DATA_FOLDER = HERE.parent.joinpath("data")
+CSV_LOCATION = DATA_FOLDER.joinpath("sample_vehicles.csv").resolve(strict=True)
 
 # Configure logging
 logging.basicConfig(
@@ -86,6 +89,9 @@ def process_vehicle_row(row: pd.Series) -> Dict[str, Any]:
             "version": row.get("version") if pd.notna(row.get("version")) else None,
             "km": row.get("km"),
             "price": row.get("price"),
+            "largo": row.get("largo") if pd.notna(row.get("largo")) else None,
+            "ancho": row.get("ancho") if pd.notna(row.get("ancho")) else None,
+            "altura": row.get("altura") if pd.notna(row.get("altura")) else None,
             "features": features,
         }
 
@@ -168,7 +174,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Ingest vehicle CSV data into database"
     )
-    parser.add_argument("filepath", help="Path to CSV file")
+    parser.add_argument("filepath", help="Path to CSV file", default=CSV_LOCATION)
     parser.add_argument(
         "--batch-size", type=int, default=500, help="Batch size for processing"
     )

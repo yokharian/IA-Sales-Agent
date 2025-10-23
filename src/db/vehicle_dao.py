@@ -8,8 +8,7 @@ from sqlalchemy import distinct
 from sqlmodel import Session
 from sqlmodel import select
 
-from db.models import Vehicle
-from src.db.database import get_session_sync
+from .database import Vehicle, get_session_sync
 
 
 def get_makes(limit: int = 5) -> List[str]:
@@ -143,6 +142,7 @@ def search_vehicles(
     max_year: Optional[int] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
+    km_max: Optional[int] = None,
     features: Optional[dict] = None,
 ) -> List[Vehicle]:
     """
@@ -156,6 +156,7 @@ def search_vehicles(
         max_year: Maximum year filter
         min_price: Minimum price filter
         max_price: Maximum price filter
+        km_max: Maximum km filter
         features: Features filter dictionary
 
     Returns:
@@ -164,10 +165,10 @@ def search_vehicles(
     statement = select(Vehicle)
 
     if make:
-        statement = statement.where(Vehicle.make == make.lower())
+        statement = statement.where(Vehicle.make == make)
 
     if model:
-        statement = statement.where(Vehicle.model == model.lower())
+        statement = statement.where(Vehicle.model == model)
 
     if min_year:
         statement = statement.where(Vehicle.year >= min_year)
@@ -180,6 +181,9 @@ def search_vehicles(
 
     if max_price:
         statement = statement.where(Vehicle.price <= max_price)
+
+    if km_max:
+        statement = statement.where(Vehicle.km <= km_max)
 
     # Note: Feature filtering would require more complex JSON queries
     # This is a simplified version
