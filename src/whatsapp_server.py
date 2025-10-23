@@ -10,13 +10,12 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
-
-from dotenv import load_dotenv
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 
