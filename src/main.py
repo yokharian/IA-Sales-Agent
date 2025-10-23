@@ -6,40 +6,48 @@ This module creates an intelligent agent that can help users with vehicle search
 and document queries using the ReAct (Reasoning and Acting) framework.
 """
 
-import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 import sys
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-# Add src to path for imports
-sys.path.append(str(Path(__file__).parent))
-
-from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
+
+# Add src to path for imports
+sys.path.append(str(Path(__file__).parent))
 
 # Import our custom tools
 from tools.catalog_search import catalog_search_tool
 from tools.document_search import document_search_tool
 
-# Load environment variables
-load_dotenv()
+# Prompts estandarizados
+SYSTEM_PROMPT = """Eres un asistente virtual especializado en búsqueda de vehículos y atención al cliente para una empresa automotriz. 
 
-SYSTEM_PROMPT = """You are a helpful AI assistant specialized in vehicle searches and automotive information.
+HERRAMIENTAS DISPONIBLES:
+- 'catalog_search': úsala para encontrar vehículos según los criterios del usuario (marca, modelo, año, precio, tipo de combustible, etc.), incluso si hay errores ortográficos.
+- 'document_search': úsala únicamente para responder preguntas sobre la empresa (sedes, servicios, cultura, propuesta de valor). No la uses para preguntas sobre vehículos.
 
-You have access to the following tools:
-- catalog_search: Search the vehicle catalog with advanced filtering and fuzzy matching
-- document_search: Search for relevant documents using semantic similarity
+INSTRUCCIONES:
+1. Si el usuario solicita ayuda para encontrar un coche, usa 'catalog_search' y muestra los resultados más relevantes. No justifiques tus recomendaciones.
+2. Si el usuario pregunta sobre la empresa, usa 'document_search' para obtener la información correspondiente.
+3. Si no encuentras una respuesta clara en el catálogo o documentos, responde de forma transparente diciendo: "Lo siento, no tengo esa información disponible en este momento."
+4. Evita inventar información. Responde siempre con precisión, manteniendo un tono profesional y alineado con la cultura de la empresa."""
 
-When users ask about vehicles:
-1. Use catalog_search to find vehicles matching their criteria
-2. Use document_search to find relevant documentation or information
-3. Provide helpful recommendations based on the results
-4. Handle typos and fuzzy matching gracefully
-5. Explain your reasoning when making recommendations
+ROLE_PROMPT = "Actúa como un agente comercial de Kavak que asiste al cliente durante su proceso de búsqueda y responde preguntas generales sobre la empresa."
 
-Always be helpful, accurate, and provide detailed information about the vehicles you find."""
+CONTEXT_PROMPT = """CONTEXTO OPERACIONAL:
+- Canal: WhatsApp conversacional
+- Audiencia: Clientes potenciales interesados en comprar vehículos o conocer más sobre la empresa
+- Limitaciones: Conocimiento limitado al catálogo disponible y documentos proporcionados internamente
+- Comportamiento: Comprender entradas con errores o expresiones vagas, responder de forma directa en lo comercial y cordial en lo informativo"""
+
+FULL_PROMPT = SYSTEM_PROMPT + "\n" + ROLE_PROMPT + "\n" + CONTEXT_PROMPT
 
 
 class VehicleAssistantAgent:
@@ -61,31 +69,23 @@ class VehicleAssistantAgent:
             llm: Language model to use (defaults to GPT-4)
             verbose: Whether to show agent reasoning steps
         """
-        self.llm = llm or self._get_default_llm()
+        self.llm = llm or self._get_llm
         self.verbose = verbose
 
         # Initialize tools
         self.tools = [catalog_search_tool, document_search_tool]
 
-        # Store system prompt
-        self.system_prompt = SYSTEM_PROMPT
-
         # Create the agent
         self.agent = create_agent(
-            model="openai:gpt-4o",
+            model=self.llm,
             tools=self.tools,
-            system_prompt=self.system_prompt,
+            system_prompt=FULL_PROMPT,
             debug=self.verbose,
         )
 
-    def _get_default_llm(self) -> BaseChatModel:
+    @property
+    def _get_llm(self) -> BaseChatModel:
         """Get default language model."""
-        # Check if OpenAI API key is available
-        if not os.getenv("OPENAI_API_KEY"):
-            raise ValueError(
-                "OpenAI API key not found. Please set OPENAI_API_KEY environment variable."
-            )
-
         return ChatOpenAI(model="gpt-4o", temperature=0.1, max_tokens=2000)
 
     def chat(self, message: str) -> Dict[str, Any]:
