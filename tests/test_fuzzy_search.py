@@ -92,7 +92,7 @@ class TestFuzzySearch:
             "max_results": 5,
         }
 
-        results = catalog_search_impl(preferences)
+        results = catalog_search_impl(**preferences)
 
         # Should find Toyota despite the typo
         assert len(results) == 1
@@ -107,7 +107,7 @@ class TestFuzzySearch:
 
         preferences = {"make": "Xyz", "budget_max": 30000, "max_results": 5}  # No match
 
-        results = catalog_search_impl(preferences)
+        results = catalog_search_impl(**preferences)
 
         # Should return empty results
         assert len(results) == 0
@@ -163,21 +163,23 @@ class TestFuzzySearch:
 
         for test_case in test_cases:
             try:
-                results = catalog_search_impl(test_case["preferences"])
-                
+                results = catalog_search_impl(**test_case["preferences"])
+
                 if test_case["expected_results"]:
                     # For expected results, we should get either results or handle gracefully
                     # Some searches might legitimately return no results due to data availability
                     if len(results) > 0:
                         # Verify that results have the expected structure
                         for result in results:
-                            assert hasattr(result, 'make')
-                            assert hasattr(result, 'model')
-                            assert hasattr(result, 'price')
-                            assert hasattr(result, 'year')
+                            assert hasattr(result, "make")
+                            assert hasattr(result, "model")
+                            assert hasattr(result, "price")
+                            assert hasattr(result, "year")
                     # If no results, that's also acceptable for some test cases
                 else:
-                    assert len(results) == 0, f"Expected no results for {test_case['name']} but got {len(results)}"
+                    assert (
+                        len(results) == 0
+                    ), f"Expected no results for {test_case['name']} but got {len(results)}"
 
             except Exception as e:
                 # For no match cases, it's acceptable to get empty results or exceptions
@@ -210,7 +212,9 @@ class TestFuzzySearch:
         if makes:
             first_make = makes[0]
             models_for_make = get_models_by_make(first_make, limit=5)
-            assert isinstance(models_for_make, list), "get_models_by_make should return a list"
+            assert isinstance(
+                models_for_make, list
+            ), "get_models_by_make should return a list"
             for model in models_for_make:
                 assert isinstance(model, str), "Each model should be a string"
                 assert len(model) > 0, "Model should not be empty"
@@ -220,17 +224,27 @@ class TestFuzzySearch:
         from tools.catalog_search import catalog_search_tool
 
         # Test tool attributes
-        assert hasattr(catalog_search_tool, 'name'), "Tool should have a name"
-        assert hasattr(catalog_search_tool, 'description'), "Tool should have a description"
-        assert hasattr(catalog_search_tool, 'func'), "Tool should have a function"
-        assert hasattr(catalog_search_tool, 'args_schema'), "Tool should have an args schema"
+        assert hasattr(catalog_search_tool, "name"), "Tool should have a name"
+        assert hasattr(
+            catalog_search_tool, "description"
+        ), "Tool should have a description"
+        assert hasattr(catalog_search_tool, "func"), "Tool should have a function"
+        assert hasattr(
+            catalog_search_tool, "args_schema"
+        ), "Tool should have an args schema"
 
         # Test tool name
-        assert catalog_search_tool.name == "catalog_search", "Tool name should be 'catalog_search'"
+        assert (
+            catalog_search_tool.name == "catalog_search"
+        ), "Tool name should be 'catalog_search'"
 
         # Test tool description
-        assert isinstance(catalog_search_tool.description, str), "Description should be a string"
-        assert len(catalog_search_tool.description) > 0, "Description should not be empty"
+        assert isinstance(
+            catalog_search_tool.description, str
+        ), "Description should be a string"
+        assert (
+            len(catalog_search_tool.description) > 0
+        ), "Description should not be empty"
 
         # Test tool function call
         try:
@@ -244,13 +258,15 @@ class TestFuzzySearch:
             assert isinstance(result, list), "Tool function should return a list"
             # If we get results, verify their structure
             for vehicle in result:
-                assert hasattr(vehicle, 'make'), "Vehicle should have make attribute"
-                assert hasattr(vehicle, 'model'), "Vehicle should have model attribute"
-                assert hasattr(vehicle, 'price'), "Vehicle should have price attribute"
+                assert hasattr(vehicle, "make"), "Vehicle should have make attribute"
+                assert hasattr(vehicle, "model"), "Vehicle should have model attribute"
+                assert hasattr(vehicle, "price"), "Vehicle should have price attribute"
         except Exception as e:
             # It's acceptable for the tool to fail in test environment
             # as long as it's a known error type
-            assert "Error" in str(e) or "Exception" in str(e), f"Unexpected error type: {e}"
+            assert "Error" in str(e) or "Exception" in str(
+                e
+            ), f"Unexpected error type: {e}"
 
     def test_fuzzy_matching_accuracy(self):
         """Test fuzzy matching accuracy with various typos."""
@@ -271,14 +287,20 @@ class TestFuzzySearch:
                     result = fuzzy_search_make(typo)
                     # For exact matches, we expect the correct result
                     if typo == correct_make:
-                        assert result == correct_make, f"Exact match failed: '{typo}' should return '{correct_make}' but got '{result}'"
+                        assert (
+                            result == correct_make
+                        ), f"Exact match failed: '{typo}' should return '{correct_make}' but got '{result}'"
                     # For typos, we expect either the correct result or None (if no good match)
                     elif result is not None:
-                        assert result == correct_make, f"Fuzzy match failed: '{typo}' should return '{correct_make}' but got '{result}'"
+                        assert (
+                            result == correct_make
+                        ), f"Fuzzy match failed: '{typo}' should return '{correct_make}' but got '{result}'"
                 except Exception as e:
                     # It's acceptable for fuzzy search to fail in test environment
                     # as long as it's a known error type
-                    assert "Error" in str(e) or "Exception" in str(e), f"Unexpected error type: {e}"
+                    assert "Error" in str(e) or "Exception" in str(
+                        e
+                    ), f"Unexpected error type: {e}"
 
     def test_search_performance_scenarios(self):
         """Test search performance with different parameters."""
@@ -317,26 +339,38 @@ class TestFuzzySearch:
             start_time = time.time()
 
             try:
-                results = catalog_search_impl(scenario["preferences"])
+                results = catalog_search_impl(**scenario["preferences"])
                 end_time = time.time()
-                
+
                 # Verify results structure
-                assert isinstance(results, list), f"Results should be a list for {scenario['name']}"
-                
+                assert isinstance(
+                    results, list
+                ), f"Results should be a list for {scenario['name']}"
+
                 # Performance assertion - should complete within reasonable time (5 seconds)
                 execution_time = end_time - start_time
-                assert execution_time < 5.0, f"Search took too long ({execution_time:.3f}s) for {scenario['name']}"
-                
+                assert (
+                    execution_time < 5.0
+                ), f"Search took too long ({execution_time:.3f}s) for {scenario['name']}"
+
                 # If we get results, verify their structure
                 for result in results:
-                    assert hasattr(result, 'make'), "Result should have make attribute"
-                    assert hasattr(result, 'model'), "Result should have model attribute"
-                    assert hasattr(result, 'price'), "Result should have price attribute"
+                    assert hasattr(result, "make"), "Result should have make attribute"
+                    assert hasattr(
+                        result, "model"
+                    ), "Result should have model attribute"
+                    assert hasattr(
+                        result, "price"
+                    ), "Result should have price attribute"
 
             except Exception as e:
                 end_time = time.time()
                 execution_time = end_time - start_time
                 # It's acceptable for search to fail in test environment
                 # as long as it fails quickly and with a known error type
-                assert execution_time < 5.0, f"Search failed after too long ({execution_time:.3f}s) for {scenario['name']}"
-                assert "Error" in str(e) or "Exception" in str(e), f"Unexpected error type: {e}"
+                assert (
+                    execution_time < 5.0
+                ), f"Search failed after too long ({execution_time:.3f}s) for {scenario['name']}"
+                assert "Error" in str(e) or "Exception" in str(
+                    e
+                ), f"Unexpected error type: {e}"

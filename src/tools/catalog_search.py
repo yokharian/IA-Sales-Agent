@@ -133,18 +133,28 @@ class VehicleResult(BaseModel):
     features: Dict[str, bool] = Field(description="Available features")
 
 
-def catalog_search_impl(**preferences: Any) -> List[VehicleResult]:
+def catalog_search_impl(preferences: Optional[Dict[str, Any]] = None, **kwargs: Any) -> List[VehicleResult]:
     """
     Search vehicle catalog with filters and fuzzy matching.
 
     Args:
-        preferences: Dictionary of search preferences
+        preferences: Dictionary of search preferences (can be provided as a single dict positional argument)
+        **kwargs: Alternative way to pass individual preference keys
 
     Returns:
         List of matching vehicles with scores
     """
+    # Support both a single dict argument and keyword arguments
+    merged_prefs: Dict[str, Any] = {}
+    if preferences is not None:
+        if not isinstance(preferences, dict):
+            raise TypeError("preferences must be a dict if provided")
+        merged_prefs.update(preferences)
+    if kwargs:
+        merged_prefs.update(kwargs)
+
     # Parse preferences
-    prefs = VehiclePreferences(**preferences)
+    prefs = VehiclePreferences(**merged_prefs)
 
     # Variables to store fuzzy-matched values
     matched_make, matched_model = None, None

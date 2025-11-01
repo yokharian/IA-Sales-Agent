@@ -196,9 +196,7 @@ class TestToolIntegration:
             assert callable(tool.func)
 
             # Args schema should be a Pydantic model
-            assert hasattr(tool.args_schema, "__fields__") or hasattr(
-                tool.args_schema, "model_fields"
-            )
+            assert hasattr(tool.args_schema, "model_fields")
 
     def test_tool_schema_consistency(self):
         """Test that tool schemas are consistent and valid."""
@@ -206,10 +204,7 @@ class TestToolIntegration:
             schema = tool.args_schema
 
             # Schema should have fields
-            if hasattr(schema, "__fields__"):
-                fields = schema.__fields__
-            else:
-                fields = schema.model_fields
+            fields = schema.model_fields
 
             assert len(fields) > 0
 

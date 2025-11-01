@@ -150,18 +150,28 @@ class DocumentSearchResult(BaseModel):
     )
 
 
-def document_search_impl(**inputs: Any) -> List[DocumentSearchResult]:
+def document_search_impl(inputs: Optional[Dict[str, Any]] = None, **kwargs: Any) -> List[DocumentSearchResult]:
     """
     Search for relevant documents using the retrieval system.
 
     Args:
-        inputs: Dictionary containing search parameters
+        inputs: Dictionary containing search parameters (can be provided as a single dict positional argument)
+        **kwargs: Alternative way to pass individual parameters
 
     Returns:
         List of relevant documents with metadata and scores
     """
+    # Support both a single dict argument and keyword arguments
+    merged_inputs: Dict[str, Any] = {}
+    if inputs is not None:
+        if not isinstance(inputs, dict):
+            raise TypeError("inputs must be a dict if provided")
+        merged_inputs.update(inputs)
+    if kwargs:
+        merged_inputs.update(kwargs)
+
     # Parse inputs
-    search_input = DocumentSearchInput(**inputs)
+    search_input = DocumentSearchInput(**merged_inputs)
 
     # Initialize retrieval system (assuming data directory)
     data_dir = "data/documents"  # Default data directory
