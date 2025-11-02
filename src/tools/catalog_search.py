@@ -5,10 +5,12 @@ This module provides LangChain-compatible tools for searching the vehicle catalo
 with advanced filtering, fuzzy matching, and structured results.
 """
 
-from typing import List, Optional, Dict, Any
+from __future__ import annotations
+
+from typing import List, Optional, Dict
 
 import rapidfuzz
-from langchain_core.tools import StructuredTool
+from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
 from db.database import get_session_sync, Vehicle
@@ -133,49 +135,67 @@ class VehicleResult(BaseModel):
     features: Dict[str, bool] = Field(description="Available features")
 
 
-def catalog_search_impl(preferences: Optional[Dict[str, Any]] = None, **kwargs: Any) -> List[VehicleResult]:
+@tool(
+    "catalog_search",
+    description="""Search the vehicle catalog with advanced filtering and fuzzy matching.
+    
+    This tool can find vehicles based on:
+    - Budget range (budget_min, budget_max)
+    - Make and model with typo tolerance (make, model)
+    - Maximum mileage (km_max)
+    - Required features (features)
+    - Sorting preferences (sort_by)
+    
+    Returns up to 20 vehicles.""",
+    args_schema=VehiclePreferences,
+    error_on_invalid_docstring=False,
+)
+def catalog_search_tool(
+    budget_min: Optional[float] = None,
+    budget_max: Optional[float] = None,
+    make: Optional[str] = None,
+    model: Optional[str] = None,
+    km_max: Optional[int] = None,
+    features: Optional[List[str]] = None,
+    sort_by: Optional[str] = None,
+    max_results: Optional[int] = None,
+) -> List[VehicleResult]:
     """
-    Search vehicle catalog with filters and fuzzy matching.
+    Search the vehicle catalog with filters and fuzzy matching.
 
     Args:
-        preferences: Dictionary of search preferences (can be provided as a single dict positional argument)
-        **kwargs: Alternative way to pass individual preference keys
+        budget_min: Minimum budget in USD
+        budget_max: Maximum budget in USD
+        make: Preferred vehicle make (supports typos and fuzzy matching)
+        model: Preferred vehicle model (supports typos and fuzzy matching)
+        km_max: Maximum kilometers/mileage
+        features: Required features (e.g., ['bluetooth', 'air_play'])
+        sort_by: Sort results by: 'price_low', 'price_high', 'year_new', 'km_low'
+        max_results: Maximum number of results to return
 
     Returns:
         List of matching vehicles with scores
     """
-    # Support both a single dict argument and keyword arguments
-    merged_prefs: Dict[str, Any] = {}
-    if preferences is not None:
-        if not isinstance(preferences, dict):
-            raise TypeError("preferences must be a dict if provided")
-        merged_prefs.update(preferences)
-    if kwargs:
-        merged_prefs.update(kwargs)
-
-    # Parse preferences
-    prefs = VehiclePreferences(**merged_prefs)
-
     # Variables to store fuzzy-matched values
     matched_make, matched_model = None, None
 
     # Fuzzy search for make if provided
-    if prefs.make:
-        matched_make = fuzzy_search_make(prefs.make)
+    if make:
+        matched_make = fuzzy_search_make(make)
         if not matched_make:
             # If no good match found, return empty results
             return []
 
         # If model is also provided, do fuzzy search for model within the matched make
-        if prefs.model:
-            matched_model = fuzzy_search_model(prefs.model, matched_make)
+        if model:
+            matched_model = fuzzy_search_model(model, matched_make)
             if not matched_model:
                 # If no good model match found, return empty results
                 return []
 
-    elif prefs.model:
+    elif model:
         # If only model is provided, do fuzzy search across all models
-        matched_model = fuzzy_search_model(prefs.model)
+        matched_model = fuzzy_search_model(model)
         if not matched_model:
             # If no good match found, return empty results
             return []
@@ -194,14 +214,14 @@ def catalog_search_impl(preferences: Optional[Dict[str, Any]] = None, **kwargs: 
             search_params["model"] = matched_model
 
         # Price filters
-        if prefs.budget_min is not None:
-            search_params["min_price"] = prefs.budget_min
-        if prefs.budget_max is not None:
-            search_params["max_price"] = prefs.budget_max
+        if budget_min is not None:
+            search_params["min_price"] = budget_min
+        if budget_max is not None:
+            search_params["max_price"] = budget_max
 
         # km filter
-        if prefs.km_max is not None:
-            search_params["km_max"] = prefs.km_max
+        if km_max is not None:
+            search_params["km_max"] = km_max
 
         # Note: DAO doesn't have features filter, so we'll filter after query
 
@@ -215,9 +235,9 @@ def catalog_search_impl(preferences: Optional[Dict[str, Any]] = None, **kwargs: 
     filtered_candidates = []
     for vehicle in candidates:
         # Apply features filter
-        if prefs.features:
+        if features:
             vehicle_has_all_features = True
-            for feature in prefs.features:
+            for feature in features:
                 if not vehicle.features or not vehicle.features.get(feature, False):
                     vehicle_has_all_features = False
                     break
@@ -230,20 +250,20 @@ def catalog_search_impl(preferences: Optional[Dict[str, Any]] = None, **kwargs: 
         return []
 
     # Apply sorting
-    if prefs.sort_by == "price_low":
+    if sort_by == "price_low":
         filtered_candidates.sort(key=lambda x: x.price)
-    elif prefs.sort_by == "price_high":
+    elif sort_by == "price_high":
         filtered_candidates.sort(key=lambda x: x.price, reverse=True)
-    elif prefs.sort_by == "year_new":
+    elif sort_by == "year_new":
         filtered_candidates.sort(key=lambda x: x.year, reverse=True)
-    elif prefs.sort_by == "km_low":
+    elif sort_by == "km_low":
         filtered_candidates.sort(key=lambda x: x.km)
     else:  # 'model' by default
         filtered_candidates.sort(key=lambda x: x.model, reverse=True)
 
     # Format results
     results = []
-    for vehicle in filtered_candidates[: prefs.max_results]:
+    for vehicle in filtered_candidates[:max_results]:
         result = VehicleResult(
             stock_id=vehicle.stock_id,
             make=vehicle.make,
@@ -257,21 +277,3 @@ def catalog_search_impl(preferences: Optional[Dict[str, Any]] = None, **kwargs: 
         results.append(result)
 
     return results
-
-
-# Create the LangChain tool
-catalog_search_tool = StructuredTool.from_function(
-    func=catalog_search_impl,
-    name="catalog_search",
-    description="""Search the vehicle catalog with advanced filtering and fuzzy matching.
-    
-    This tool can find vehicles based on:
-    - Budget range (budget_min, budget_max)
-    - Make and model with typo tolerance (make, model)
-    - Maximum mileage (km_max)
-    - Required features (features)
-    - Sorting preferences (sort_by)
-    
-    Returns up to 20 vehicles.""",
-    args_schema=VehiclePreferences,
-)

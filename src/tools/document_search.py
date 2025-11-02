@@ -10,13 +10,13 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
-from langchain_core.tools import StructuredTool
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.tools import tool
+from langchain_core.vectorstores import VectorStoreRetriever
+from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, Field
 
 from db.document_loader import DocumentLoader
-
-
-from langchain_openai import OpenAIEmbeddings
 
 
 class RetrievalSystem:
@@ -27,10 +27,10 @@ class RetrievalSystem:
         llm: Optional[BaseChatModel] = None,
         embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
     ):
-        self._retriever = None
-        self._bm25_retriever = None
-        self._ensemble_retriever = None
-        self._vector_store_retriever = None
+        self._retriever: BaseRetriever = None
+        self._bm25_retriever: BM25Retriever = None
+        self._ensemble_retriever: EnsembleRetriever = None
+        self._vector_store_retriever: VectorStoreRetriever = None
         self._llm = llm
 
         self.vector_store = None
@@ -45,7 +45,7 @@ class RetrievalSystem:
         return loader.load_documents()
 
     @property
-    def retriever(self):
+    def retriever(self) -> BaseRetriever:
         return self._retriever
 
     def query_vector_store(self, query: str, **kwargs) -> List[Document]:
@@ -135,9 +135,6 @@ class DocumentSearchInput(BaseModel):
     k: int = Field(
         default=6, description="Number of documents to retrieve", ge=1, le=20
     )
-    score_threshold: Optional[float] = Field(
-        default=None, description="Minimum similarity score threshold (0-1)", ge=0, le=1
-    )
 
 
 class DocumentSearchResult(BaseModel):
@@ -150,37 +147,40 @@ class DocumentSearchResult(BaseModel):
     )
 
 
-def document_search_impl(inputs: Optional[Dict[str, Any]] = None, **kwargs: Any) -> List[DocumentSearchResult]:
+@tool(
+    "document_search",
+    description="""Search for relevant documents using semantic similarity and BM25 retrieval.
+
+    This tool can find documents based on:
+    - Natural language queries
+    - Semantic similarity using embeddings
+    - BM25 keyword matching
+    - Configurable similarity thresholds
+
+    The tool uses a hybrid retrieval approach combining dense vector search
+    with sparse keyword matching for comprehensive document discovery.
+
+    Returns up to 20 documents with relevance scores and metadata.""",
+    args_schema=DocumentSearchInput,
+    error_on_invalid_docstring=False,
+)
+def document_search_tool(query: str, k: int = 6) -> List[DocumentSearchResult]:
     """
     Search for relevant documents using the retrieval system.
 
     Args:
-        inputs: Dictionary containing search parameters (can be provided as a single dict positional argument)
-        **kwargs: Alternative way to pass individual parameters
+        query: Search query to find relevant documents
+        k: Number of documents to retrieve
 
     Returns:
         List of relevant documents with metadata and scores
     """
-    # Support both a single dict argument and keyword arguments
-    merged_inputs: Dict[str, Any] = {}
-    if inputs is not None:
-        if not isinstance(inputs, dict):
-            raise TypeError("inputs must be a dict if provided")
-        merged_inputs.update(inputs)
-    if kwargs:
-        merged_inputs.update(kwargs)
-
-    # Parse inputs
-    search_input = DocumentSearchInput(**merged_inputs)
-
     # Initialize retrieval system (assuming data directory)
     data_dir = "data/documents"  # Default data directory
     retrieval_system = RetrievalSystem(data_dir=data_dir)
 
     # Query the retrieval system
-    documents = retrieval_system.query_vector_store(
-        query=search_input.query, k=search_input.k
-    )
+    documents = retrieval_system.query_vector_store(query=query, k=k)
 
     # Format results
     results = []
@@ -198,23 +198,3 @@ def document_search_impl(inputs: Optional[Dict[str, Any]] = None, **kwargs: Any)
         results.append(result)
 
     return results
-
-
-# Create the LangChain tool
-document_search_tool = StructuredTool.from_function(
-    func=document_search_impl,
-    name="document_search",
-    description="""Search for relevant documents using semantic similarity and BM25 retrieval.
-    
-    This tool can find documents based on:
-    - Natural language queries
-    - Semantic similarity using embeddings
-    - BM25 keyword matching
-    - Configurable similarity thresholds
-    
-    The tool uses a hybrid retrieval approach combining dense vector search
-    with sparse keyword matching for comprehensive document discovery.
-    
-    Returns up to 20 documents with relevance scores and metadata.""",
-    args_schema=DocumentSearchInput,
-)

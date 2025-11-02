@@ -13,7 +13,7 @@ os.environ["OPENAI_API_KEY"] = "test-key-for-testing"
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from tools.catalog_search import catalog_search_tool
-from tools.document_search import document_search_tool
+from tools.document_search import document_search_tool, DocumentSearchInput
 
 
 class TestCatalogSearchTool:
@@ -28,7 +28,7 @@ class TestCatalogSearchTool:
 
         assert catalog_search_tool.name == "catalog_search"
         assert "vehicle" in catalog_search_tool.description.lower()
-        assert catalog_search_tool.func is not None
+        assert catalog_search_tool.invoke is not None
         assert catalog_search_tool.args_schema is not None
 
     def test_catalog_tool_schema(self):
@@ -66,7 +66,7 @@ class TestCatalogSearchTool:
         inputs = {"make": "Toyota", "max_results": 2}
 
         try:
-            result = catalog_search_tool.func(inputs)
+            result = catalog_search_tool.invoke(inputs)
             # Should return a list (even if empty)
             assert isinstance(result, list)
         except Exception as e:
@@ -84,7 +84,7 @@ class TestCatalogSearchTool:
 
         for inputs in invalid_inputs:
             try:
-                result = catalog_search_tool.func(inputs)
+                result = catalog_search_tool.invoke(DocumentSearchInput(**inputs))
                 # Should either return results or handle gracefully
                 assert isinstance(result, list)
             except Exception as e:
@@ -104,7 +104,7 @@ class TestDocumentSearchTool:
 
         assert document_search_tool.name == "document_search"
         assert "document" in document_search_tool.description.lower()
-        assert document_search_tool.func is not None
+        assert document_search_tool.invoke is not None
         assert document_search_tool.args_schema is not None
 
     def test_document_tool_schema(self):
@@ -115,14 +115,12 @@ class TestDocumentSearchTool:
         valid_inputs = {
             "query": "vehicle specifications",
             "k": 5,
-            "score_threshold": 0.7,
         }
 
         # Should not raise validation error
         validated = schema(**valid_inputs)
         assert validated.query == "vehicle specifications"
         assert validated.k == 5
-        assert validated.score_threshold == 0.7
 
     def test_document_tool_schema_defaults(self):
         """Test document search tool schema default values."""
@@ -133,7 +131,6 @@ class TestDocumentSearchTool:
         validated = schema(**minimal_inputs)
         assert validated.query == "test query"
         assert validated.k == 6  # Default value
-        assert validated.score_threshold is None  # Default value
 
     def test_document_tool_function_call(self):
         """Test document search tool function call."""
@@ -141,7 +138,7 @@ class TestDocumentSearchTool:
         inputs = {"query": "test query", "k": 2}
 
         try:
-            result = document_search_tool.func(inputs)
+            result = document_search_tool.invoke(inputs)
             # Should return a list (even if empty)
             assert isinstance(result, list)
         except Exception as e:
@@ -159,12 +156,11 @@ class TestDocumentSearchTool:
         invalid_inputs = [
             {"query": "", "k": -1},
             {"query": None, "k": 0},
-            {"query": "test", "score_threshold": 1.5},
         ]
 
         for inputs in invalid_inputs:
             try:
-                result = document_search_tool.func(inputs)
+                result = document_search_tool.invoke(DocumentSearchInput(**inputs))
                 # Should either return results or handle gracefully
                 assert isinstance(result, list)
             except Exception as e:
@@ -193,7 +189,7 @@ class TestToolIntegration:
             assert len(tool.description) > 0
 
             # Function should be callable
-            assert callable(tool.func)
+            assert callable(tool.invoke)
 
             # Args schema should be a Pydantic model
             assert hasattr(tool.args_schema, "model_fields")
@@ -221,7 +217,7 @@ class TestToolIntegration:
         for tool in [catalog_search_tool, document_search_tool]:
             # Should be able to call the function (even if it fails)
             try:
-                result = tool.func(test_input)
+                result = tool.invoke(test_input)
                 assert isinstance(result, list)
             except Exception:
                 # Expected to fail in test environment, but should not crash

@@ -13,7 +13,8 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 from tools.catalog_search import (
     fuzzy_search_make,
     fuzzy_search_model,
-    catalog_search_impl,
+    catalog_search_tool,
+    VehiclePreferences,
 )
 
 
@@ -92,7 +93,7 @@ class TestFuzzySearch:
             "max_results": 5,
         }
 
-        results = catalog_search_impl(**preferences)
+        results = catalog_search_tool.invoke(preferences)
 
         # Should find Toyota despite the typo
         assert len(results) == 1
@@ -107,7 +108,7 @@ class TestFuzzySearch:
 
         preferences = {"make": "Xyz", "budget_max": 30000, "max_results": 5}  # No match
 
-        results = catalog_search_impl(**preferences)
+        results = catalog_search_tool.invoke(preferences)
 
         # Should return empty results
         assert len(results) == 0
@@ -163,7 +164,7 @@ class TestFuzzySearch:
 
         for test_case in test_cases:
             try:
-                results = catalog_search_impl(**test_case["preferences"])
+                results = catalog_search_tool.invoke(test_case["preferences"])
 
                 if test_case["expected_results"]:
                     # For expected results, we should get either results or handle gracefully
@@ -248,12 +249,14 @@ class TestFuzzySearch:
 
         # Test tool function call
         try:
-            result = catalog_search_tool.func(
-                {
-                    "make": "Toyta",  # Typo to test fuzzy matching
-                    "budget_max": 50000,
-                    "max_results": 3,
-                }
+            result = catalog_search_tool.invoke(
+                VehiclePreferences(
+                    **{
+                        "make": "Toyta",  # Typo to test fuzzy matching
+                        "budget_max": 50000,
+                        "max_results": 3,
+                    }
+                )
             )
             assert isinstance(result, list), "Tool function should return a list"
             # If we get results, verify their structure
@@ -339,7 +342,7 @@ class TestFuzzySearch:
             start_time = time.time()
 
             try:
-                results = catalog_search_impl(**scenario["preferences"])
+                results = catalog_search_tool.invoke(scenario["preferences"])
                 end_time = time.time()
 
                 # Verify results structure

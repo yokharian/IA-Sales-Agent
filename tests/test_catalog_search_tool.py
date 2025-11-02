@@ -5,10 +5,11 @@ Tests for LangChain tools.
 import os
 import sys
 import pytest
+from pydantic import ValidationError
 from pathlib import Path
 
 # Set test environment variables before any imports
-os.environ['OPENAI_API_KEY'] = 'test-key-for-testing'
+os.environ["OPENAI_API_KEY"] = "test-key-for-testing"
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
@@ -57,18 +58,18 @@ class TestVehiclePreferences:
 
     def test_invalid_budget(self):
         """Test invalid budget validation."""
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, ValidationError)):
             VehiclePreferences(budget_min=-1000)
 
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, ValidationError)):
             VehiclePreferences(budget_max=-5000)
 
     def test_invalid_max_results(self):
         """Test invalid max_results validation."""
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, ValidationError)):
             VehiclePreferences(max_results=0)
 
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, ValidationError)):
             VehiclePreferences(max_results=25)
 
 
@@ -113,7 +114,7 @@ class TestVehicleResult:
         assert result.version is None
 
 
-class TestCatalogSearchImpl:
+class TestCatalogSearchTool:
     """Test catalog search implementation."""
 
     def test_catalog_search_tool_creation(self):
@@ -146,7 +147,11 @@ class TestCatalogSearchImpl:
         test_cases = [
             {
                 "name": "Search by make and budget",
-                "preferences": {"make": "toyota", "budget_max": 20000, "max_results": 3}
+                "preferences": {
+                    "make": "toyota",
+                    "budget_max": 20000,
+                    "max_results": 3,
+                },
             },
             {
                 "name": "Search with typos (fuzzy matching)",
@@ -154,11 +159,14 @@ class TestCatalogSearchImpl:
                     "make": "hond",  # Typo for "honda"
                     "model": "civic",
                     "max_results": 2,
-                }
+                },
             },
             {
                 "name": "Search by features",
-                "preferences": {"features": ["bluetooth", "air_conditioning"], "max_results": 2}
+                "preferences": {
+                    "features": ["bluetooth", "air_conditioning"],
+                    "max_results": 2,
+                },
             },
             {
                 "name": "Complex search with multiple filters",
@@ -167,24 +175,32 @@ class TestCatalogSearchImpl:
                     "budget_max": 50000,
                     "km_max": 50000,
                     "max_results": 3,
-                }
+                },
             },
             {
                 "name": "Price range search",
-                "preferences": {"budget_min": 200000, "budget_max": 400000, "max_results": 5}
-            }
+                "preferences": {
+                    "budget_min": 200000,
+                    "budget_max": 400000,
+                    "max_results": 5,
+                },
+            },
         ]
 
         for test_case in test_cases:
             # Test that the function can be called without crashing
             try:
-                from tools.catalog_search import catalog_search_impl
-                results = catalog_search_impl(test_case["preferences"])
+                from tools.catalog_search import catalog_search_tool
+
+                results = catalog_search_tool.invoke(test_case["preferences"])
                 assert isinstance(results, list)
                 # Should handle the query gracefully
             except Exception as e:
                 # Should handle errors gracefully
-                assert isinstance(e, (ValueError, TypeError, KeyError, AttributeError))
+                assert isinstance(
+                    e,
+                    (ValueError, TypeError, KeyError, AttributeError, ValidationError),
+                )
 
     def test_catalog_search_tool_integration(self):
         """Test catalog search tool integration with LangChain."""
@@ -195,11 +211,11 @@ class TestCatalogSearchImpl:
         assert isinstance(catalog_search_tool.description, str)
         assert len(catalog_search_tool.description) > 0
         assert catalog_search_tool.args_schema is not None
-        assert callable(catalog_search_tool.func)
+        assert callable(catalog_search_tool.invoke)
 
         # Test direct tool usage
         try:
-            result = catalog_search_tool.func(
+            result = catalog_search_tool.invoke(
                 {
                     "make": "Toyta",  # Typo to test fuzzy matching
                     "budget_max": 50000,
@@ -209,14 +225,17 @@ class TestCatalogSearchImpl:
             assert isinstance(result, list)
         except Exception as e:
             # Expected to fail in test environment, but should not crash
-            assert isinstance(e, (ValueError, TypeError, KeyError, AttributeError))
+            assert isinstance(
+                e, (ValueError, TypeError, KeyError, AttributeError, ValidationError)
+            )
 
     def test_integrated_search_workflow(self):
         """Test integrated search workflow using both tools."""
         # Test vehicle catalog search
         try:
             from tools.catalog_search import catalog_search_tool
-            vehicle_results = catalog_search_tool.func(
+
+            vehicle_results = catalog_search_tool.invoke(
                 {
                     "make": "Toyta",  # Intentional typo to test fuzzy matching
                     "budget_max": 50000,
@@ -226,30 +245,44 @@ class TestCatalogSearchImpl:
             assert isinstance(vehicle_results, list)
         except Exception as e:
             # Expected to fail in test environment, but should not crash
-            assert isinstance(e, (ValueError, TypeError, KeyError, AttributeError))
+            assert isinstance(
+                e, (ValueError, TypeError, KeyError, AttributeError, ValidationError)
+            )
 
         # Test document search
         try:
             from tools.document_search import document_search_tool
-            doc_results = document_search_tool.func(
+
+            doc_results = document_search_tool.invoke(
                 {"query": "vehicle specifications and features", "k": 3}
             )
             assert isinstance(doc_results, list)
         except Exception as e:
             # Expected to fail in test environment, but should not crash
             from openai import AuthenticationError, OpenAIError
-            assert isinstance(e, (ValueError, TypeError, KeyError, AttributeError, AuthenticationError, OpenAIError))
+
+            assert isinstance(
+                e,
+                (
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    AttributeError,
+                    AuthenticationError,
+                    OpenAIError,
+                ),
+            )
 
         # Test combined workflow
         try:
             # Step 1: Find vehicles
-            vehicles = catalog_search_tool.func({"make": "Honda", "max_results": 2})
+            vehicles = catalog_search_tool.invoke({"make": "Honda", "max_results": 2})
             assert isinstance(vehicles, list)
 
             if vehicles:
                 # Step 2: Get documentation for the first vehicle
                 first_vehicle = vehicles[0]
-                docs = document_search_tool.func(
+                docs = document_search_tool.invoke(
                     {
                         "query": f"{first_vehicle.make} {first_vehicle.model} specifications",
                         "k": 2,
@@ -259,7 +292,18 @@ class TestCatalogSearchImpl:
         except Exception as e:
             # Expected to fail in test environment, but should not crash
             from openai import AuthenticationError, OpenAIError
-            assert isinstance(e, (ValueError, TypeError, KeyError, AttributeError, AuthenticationError, OpenAIError))
+
+            assert isinstance(
+                e,
+                (
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    AttributeError,
+                    AuthenticationError,
+                    OpenAIError,
+                ),
+            )
 
     def test_catalog_search_performance_scenarios(self):
         """Test catalog search performance with different scenarios."""
@@ -269,15 +313,19 @@ class TestCatalogSearchImpl:
         search_scenarios = [
             {
                 "name": "Simple make search",
-                "preferences": {"make": "Toyota", "max_results": 5}
+                "preferences": {"make": "Toyota", "max_results": 5},
             },
             {
                 "name": "Make with typo",
-                "preferences": {"make": "Toyta", "max_results": 5}
+                "preferences": {"make": "Toyta", "max_results": 5},
             },
             {
                 "name": "Price range search",
-                "preferences": {"budget_min": 200000, "budget_max": 400000, "max_results": 10}
+                "preferences": {
+                    "budget_min": 200000,
+                    "budget_max": 400000,
+                    "max_results": 10,
+                },
             },
             {
                 "name": "Complex search",
@@ -285,26 +333,30 @@ class TestCatalogSearchImpl:
                     "make": "Hnda",  # Typo
                     "budget_max": 300000,
                     "km_max": 50000,
-                    "max_results": 5
-                }
-            }
+                    "max_results": 5,
+                },
+            },
         ]
 
         for scenario in search_scenarios:
             start_time = time.time()
-            
+
             try:
-                from tools.catalog_search import catalog_search_impl
-                results = catalog_search_impl(scenario["preferences"])
+                from tools.catalog_search import catalog_search_tool
+
+                results = catalog_search_tool.invoke(**scenario["preferences"])
                 end_time = time.time()
-                
+
                 # Should complete within reasonable time (5 seconds)
                 assert end_time - start_time < 5.0
                 assert isinstance(results, list)
-                
+
             except Exception as e:
                 # Should handle errors gracefully
-                assert isinstance(e, (ValueError, TypeError, KeyError, AttributeError))
+                assert isinstance(
+                    e,
+                    (ValueError, TypeError, KeyError, AttributeError, ValidationError),
+                )
 
     def test_catalog_search_edge_cases(self):
         """Test catalog search error handling and edge cases."""
@@ -312,30 +364,32 @@ class TestCatalogSearchImpl:
         edge_cases = [
             {
                 "name": "Invalid budget range",
-                "preferences": {"budget_min": 50000, "budget_max": 20000, "max_results": 3}
+                "preferences": {
+                    "budget_min": 50000,
+                    "budget_max": 20000,
+                    "max_results": 3,
+                },
             },
             {
                 "name": "Zero max results",
-                "preferences": {"make": "Toyota", "max_results": 0}
+                "preferences": {"make": "Toyota", "max_results": 0},
             },
             {
                 "name": "Very high max results",
-                "preferences": {"make": "Toyota", "max_results": 1000}
+                "preferences": {"make": "Toyota", "max_results": 1000},
             },
-            {
-                "name": "Empty make",
-                "preferences": {"make": "", "max_results": 3}
-            },
+            {"name": "Empty make", "preferences": {"make": "", "max_results": 3}},
             {
                 "name": "Special characters in make",
-                "preferences": {"make": "Toy@ta", "max_results": 3}
-            }
+                "preferences": {"make": "Toy@ta", "max_results": 3},
+            },
         ]
 
         for case in edge_cases:
             try:
-                from tools.catalog_search import catalog_search_impl
-                results = catalog_search_impl(case["preferences"])
+                from tools.catalog_search import catalog_search_tool
+
+                results = catalog_search_tool.invoke(case["preferences"])
                 assert isinstance(results, list)
                 # Should handle edge cases gracefully
             except Exception as e:
@@ -361,8 +415,8 @@ class TestCatalogSearchImpl:
 
         # Test that both tools have required LangChain tool interface
         for tool in [catalog_search_tool, document_search_tool]:
-            assert hasattr(tool, 'name')
-            assert hasattr(tool, 'description')
-            assert hasattr(tool, 'func')
-            assert hasattr(tool, 'args_schema')
-            assert callable(tool.func)
+            assert hasattr(tool, "name")
+            assert hasattr(tool, "description")
+            assert hasattr(tool, "func")
+            assert hasattr(tool, "args_schema")
+            assert callable(tool.invoke)

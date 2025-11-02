@@ -4,6 +4,7 @@ Test document search tool functionality.
 
 import os
 import pytest
+from pydantic import ValidationError
 from unittest.mock import Mock, patch
 import sys
 from pathlib import Path
@@ -14,7 +15,7 @@ os.environ["OPENAI_API_KEY"] = "test-key-for-testing"
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from tools.document_search import document_search_impl, DocumentSearchInput
+from tools.document_search import document_search_tool, DocumentSearchInput
 
 
 class TestDocumentSearchTool:
@@ -35,8 +36,7 @@ class TestDocumentSearchTool:
 
         # Test inputs
         inputs = {"query": "car information", "k": 5}
-
-        results = document_search_impl(**inputs)
+        results = document_search_tool.invoke(inputs)
 
         # Verify results
         assert len(results) == 1
@@ -60,7 +60,7 @@ class TestDocumentSearchTool:
         # Test inputs
         inputs = {"query": "vehicle specifications", "k": 3, "score_threshold": 0.7}
 
-        results = document_search_impl(**inputs)
+        results = document_search_tool.invoke(inputs)
 
         # Verify results
         assert len(results) == 1
@@ -86,7 +86,7 @@ class TestDocumentSearchTool:
         # Test inputs
         inputs = {"query": "vehicle information", "k": 3}
 
-        results = document_search_impl(**inputs)
+        results = document_search_tool.invoke(inputs)
 
         # Verify results
         assert len(results) == 3
@@ -105,7 +105,7 @@ class TestDocumentSearchTool:
         # Test inputs
         inputs = {"query": "nonexistent topic", "k": 5}
 
-        results = document_search_impl(**inputs)
+        results = document_search_tool.invoke(inputs)
 
         # Verify empty results
         assert len(results) == 0
@@ -118,7 +118,6 @@ class TestDocumentSearchTool:
         search_input = DocumentSearchInput(**valid_inputs)
         assert search_input.query == "test query"
         assert search_input.k == 5
-        assert search_input.score_threshold == 0.7
 
     def test_document_search_input_defaults(self):
         """Test default values for document search input."""
@@ -128,7 +127,6 @@ class TestDocumentSearchTool:
         search_input = DocumentSearchInput(**minimal_inputs)
         assert search_input.query == "test query"
         assert search_input.k == 6  # Default value
-        assert search_input.score_threshold is None  # Default value
 
     def test_document_search_comprehensive_scenarios(self):
         """Test document search with comprehensive scenarios."""
@@ -159,7 +157,7 @@ class TestDocumentSearchTool:
         for test_case in test_cases:
             # Test that the function can be called without crashing
             try:
-                results = document_search_impl(**test_case["inputs"])
+                results = document_search_tool.invoke(test_case["inputs"])
                 assert isinstance(results, list)
                 # Should handle the query gracefully
             except Exception as e:
@@ -174,6 +172,7 @@ class TestDocumentSearchTool:
                         KeyError,
                         AttributeError,
                         AuthenticationError,
+                        ValidationError,
                     ),
                 )
 
@@ -186,11 +185,13 @@ class TestDocumentSearchTool:
         assert isinstance(document_search_tool.description, str)
         assert len(document_search_tool.description) > 0
         assert document_search_tool.args_schema is not None
-        assert callable(document_search_tool.func)
+        assert callable(document_search_tool.invoke)
 
         # Test direct tool usage
         try:
-            result = document_search_tool.func({"query": "vehicle information", "k": 2})
+            result = document_search_tool.invoke(
+                {"query": "vehicle information", "k": 2}
+            )
             assert isinstance(result, list)
         except Exception as e:
             # Expected to fail in test environment, but should not crash
@@ -198,7 +199,14 @@ class TestDocumentSearchTool:
 
             assert isinstance(
                 e,
-                (ValueError, TypeError, KeyError, AttributeError, AuthenticationError),
+                (
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    AttributeError,
+                    AuthenticationError,
+                    ValidationError,
+                ),
             )
 
     def test_document_search_performance_scenarios(self):
@@ -230,7 +238,7 @@ class TestDocumentSearchTool:
             start_time = time.time()
 
             try:
-                results = document_search_impl(**scenario["inputs"])
+                results = document_search_tool.invoke(scenario["inputs"])
                 end_time = time.time()
 
                 # Should complete within reasonable time (5 seconds)
@@ -249,6 +257,7 @@ class TestDocumentSearchTool:
                         KeyError,
                         AttributeError,
                         AuthenticationError,
+                        ValidationError,
                     ),
                 )
 
@@ -271,7 +280,7 @@ class TestDocumentSearchTool:
 
         for case in edge_cases:
             try:
-                results = document_search_impl(**case["inputs"])
+                results = document_search_tool.invoke(case["inputs"])
                 assert isinstance(results, list)
                 # Should handle edge cases gracefully
             except Exception as e:
@@ -286,22 +295,23 @@ class TestDocumentSearchTool:
                         KeyError,
                         AttributeError,
                         AuthenticationError,
+                        ValidationError,
                     ),
                 )
 
     def test_document_search_input_validation_edge_cases(self):
         """Test input validation for edge cases."""
         # Test with None values
-        with pytest.raises((ValueError, TypeError)):
-            document_search_impl({"query": None, "k": 3})
+        with pytest.raises((ValueError, TypeError, ValidationError)):
+            document_search_tool.invoke({"query": None, "k": 3})
 
         # Test with invalid types
-        with pytest.raises((ValueError, TypeError)):
-            document_search_impl({"query": 123, "k": "invalid"})
+        with pytest.raises((ValueError, TypeError, ValidationError)):
+            document_search_tool.invoke({"query": 123, "k": "invalid"})
 
         # Test with missing required fields
-        with pytest.raises((KeyError, TypeError, Exception)):
-            document_search_impl({"k": 3})  # Missing query
+        with pytest.raises((KeyError, TypeError, Exception, ValidationError)):
+            document_search_tool.invoke({"k": 3})  # Missing query
 
     def test_document_search_result_structure(self):
         """Test that document search results have correct structure."""
@@ -321,7 +331,7 @@ class TestDocumentSearchTool:
 
             # Test the search
             inputs = {"query": "test query", "k": 2}
-            results = document_search_impl(**inputs)
+            results = document_search_tool.invoke(inputs)
 
             # Verify result structure
             assert len(results) == 2
