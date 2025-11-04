@@ -2,7 +2,10 @@
 
 An intelligent AI-powered vehicle sales assistant with WhatsApp integration, vector search capabilities, and fuzzy matching. Built with LangChain, PostgreSQL, and ChromaDB for production-ready automotive e-commerce.
 
-![diagram.svg](docs/diagram.svg)
+[![Demonstration Video](docs/AvailableonYouTube-white-SVG.svg)](https://www.youtube.com/watch?v=3V-NJQhuJU0)
+
+[![Demonstration Video](https://img.youtube.com/vi/3V-NJQhuJU0/hqdefault.jpg)](https://www.youtube.com/watch?v=3V-NJQhuJU0)
+
 
 ## 🌟 Features
 
@@ -13,6 +16,10 @@ An intelligent AI-powered vehicle sales assistant with WhatsApp integration, vec
 - 💾 **PostgreSQL Backend**: Robust vehicle catalog with SQLModel
 - 🎯 **Feature Filtering**: Search by features, price, mileage, make, and model
 - 🌐 **FastAPI Server**: Production-ready webhook handling
+
+## Diagram
+
+![diagram.svg](docs/diagram.svg)
 
 ## 🚀 Quick Start
 
@@ -95,9 +102,17 @@ python demo.py --mode interactive
 
 Example queries:
 ```
-You: Find me Toyota vehicles under $300,000
-You: I'm looking for a Honda with Bluetooth and CarPlay
-You: ¿Tienes vehículos Volkswagen disponibles?
+You: ¿Qué documentos necesito para comprar un auto?
+You: Quiero comprar un coche BMW
+You: ¿Hay devolución?
+You: Busco onda o bolbo baratos
+You: ¿Dónde están las sedes de kavak?
+You: wolksvagen del año
+You: nasda y nisan con el menor km
+You: ¿Cómo funciona el plan de pago a meses?
+
+# invalid query:
+You: ¿En qué año se fundó kavak?
 ```
 
 ### WhatsApp Server
@@ -135,7 +150,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/commercial_agent
 
 ### Vector Search Settings
 
-- **Embeddings**: HuggingFace `all-MiniLM-L6-v2`
+- **Embeddings**: HuggingFace `text-embedding-3-small`
 - **Vector Store**: ChromaDB (persisted to `data/chroma/`)
 - **Chunking**: 500 chars with 100 char overlap
 - **Retrieval**: Top-K semantic search
@@ -167,7 +182,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/commercial_agent
 
 ```bash
 # Run all tests
-python scripts/run_tests.sh
+pytest -v
 
 # Run specific test suites
 pytest tests/test_catalog_search_tool.py -v
@@ -188,13 +203,13 @@ When running the WhatsApp server:
 
 Comprehensive documentation available in the `docs/` directory:
 
-- [System Overview & Architecture](docs/MAIN_PRD.md)
-- [AI Agent Guidelines](docs/agents.md)
+- [System Overview & Architecture](docs/main_prd.md)
+- [AI Agent Guidelines](docs/AGENTS.md)
 - [Vehicle Catalog Search Tool](docs/catalog_search_prd.md)
 - [Document Search Tool](docs/document_search_prd.md)
 - [CSV Ingestion Guide](docs/csv_ingestion.md)
 - [WhatsApp Setup Guide](docs/whatsapp_setup.md)
-- [Documentation Index](docs/INDEX.md)
+- [Documentation Index](docs/index.md)
 
 ### External Resources
 - [LangChain Documentation](https://python.langchain.com/docs/introduction/)
