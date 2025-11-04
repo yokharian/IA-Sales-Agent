@@ -25,7 +25,7 @@ class RetrievalSystem:
         self,
         data_dir: str,
         llm: Optional[BaseChatModel] = None,
-        embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
+        embedding_function=OpenAIEmbeddings(model="text-embedding-3-small"),
     ):
         self._retriever: BaseRetriever = None
         self._bm25_retriever: BM25Retriever = None
