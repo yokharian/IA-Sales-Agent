@@ -4,7 +4,7 @@ services:
   commercial-agent:
     build: .
     ports:
-      - "5000:5000"
+      - "5000"
     environment:
       # Database configuration
       - DATABASE_URL=postgresql://postgres:password@db:5432/commercial_agent

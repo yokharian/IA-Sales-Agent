@@ -28,18 +28,20 @@ ENV PYTHONPATH=/app/src
 ENV PYTHONUNBUFFERED=1
 
 # Create a startup script that runs CSV ingestion first, then starts the WhatsApp server
-RUN echo '#!/bin/bash\n\
-echo "🚀 Starting Commercial Agent Setup..."\n\
-echo "📊 Step 1: Running CSV ingestion..."\n\
-cd /app && python scripts/ingest_csv.py data/sample_vehicles.csv --create-tables\n\
-if [ $? -eq 0 ]; then\n\
-    echo "✅ CSV ingestion completed successfully"\n\
-    echo "📱 Step 2: Starting WhatsApp server..."\n\
-    cd /app && python src/whatsapp_server.py --host 0.0.0.0 --port 5000\n\
-else\n\
-    echo "❌ CSV ingestion failed. Exiting..."\n\
-    exit 1\n\
-fi' > /app/start.sh && chmod +x /app/start.sh
+RUN set -e; \
+    cat > /app/start.sh <<'EOF' && chmod +x /app/start.sh
+#!/usr/bin/env sh
+set -e
+
+echo "🚀 Starting Commercial Agent Setup..."
+echo "📊 Step 1: Running CSV ingestion..."
+cd /app
+python scripts/ingest_csv.py data/sample_vehicles.csv --create-tables
+
+echo "✅ CSV ingestion completed successfully"
+echo "📱 Step 2: Starting WhatsApp server..."
+exec python src/whatsapp_server.py --host 0.0.0.0 --port 5000
+EOF
 
 # Expose the port
 EXPOSE 5000

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Generator
 from typing import Optional, Dict, Any
 
@@ -7,12 +8,16 @@ from sqlalchemy import Engine
 from sqlmodel import SQLModel, Field
 from sqlmodel import create_engine, Session
 
-# Database configuration
+# Resolve project root (repository root)
+THIS_FILE_PATH = Path(__file__).resolve()
+PROJECT_ROOT = THIS_FILE_PATH.parent.parent.parent
+DATA_FOLDER = PROJECT_ROOT.joinpath("data")
+
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:password@localhost:5432/commercial_agent"
+    "DATABASE_URL", f"sqlite:////{DATA_FOLDER.joinpath('sqlite.db')}"
 )
 
-# Create engine
+
 engine: Engine = create_engine(
     DATABASE_URL,
     echo=os.getenv("DB_ECHO", "false").lower() == "true",

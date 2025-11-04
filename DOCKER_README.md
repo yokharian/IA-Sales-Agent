@@ -26,7 +26,24 @@ DATABASE_URL=postgresql://postgres:password@db:5432/commercial_agent
 
 ## Quick Start
 
-### Option 1: Using Docker Compose (Recommended)
+### Option 1: Using Docker directly (Recommended)
+
+1. **Build the image:**
+   ```bash
+   docker build -t commercial-agent .
+   ```
+
+2. **Run with environment variables:**
+   ```bash
+   docker run -p 5000:5000 \
+     -e TWILIO_ACCOUNT_SID=your_sid \
+     -e TWILIO_AUTH_TOKEN=your_token \
+     -e TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890 \
+     -e OPENAI_API_KEY=your_openai_key \
+     commercial-agent
+   ```
+
+### Option 2: Using Docker Compose
 
 1. **Set up environment variables:**
    ```bash
@@ -43,23 +60,6 @@ DATABASE_URL=postgresql://postgres:password@db:5432/commercial_agent
    - WhatsApp webhook: `http://localhost:5000/whatsapp/webhook`
    - Health check: `http://localhost:5000/health`
    - API docs: `http://localhost:5000/docs`
-
-### Option 2: Using Docker directly
-
-1. **Build the image:**
-   ```bash
-   docker build -t commercial-agent .
-   ```
-
-2. **Run with environment variables:**
-   ```bash
-   docker run -p 5000:5000 \
-     -e TWILIO_ACCOUNT_SID=your_sid \
-     -e TWILIO_AUTH_TOKEN=your_token \
-     -e TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890 \
-     -e OPENAI_API_KEY=your_openai_key \
-     commercial-agent
-   ```
 
 ## What Happens During Startup
 
@@ -93,22 +93,6 @@ DATABASE_URL=postgresql://postgres:password@db:5432/commercial_agent
 - Verify environment variables
 
 ## Development
-
-### Rebuilding After Changes
-```bash
-docker-compose down
-docker-compose up --build
-```
-
-### Viewing Logs
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f commercial-agent
-docker-compose logs -f db
-```
 
 ### Accessing the Database
 ```bash
