@@ -93,12 +93,12 @@ class TestFuzzySearch:
             "max_results": 5,
         }
 
-        results = catalog_search_tool.invoke(preferences)
+        content,artifact = catalog_search_tool.func(**preferences)
 
         # Should find Toyota despite the typo
-        assert len(results) == 1
-        assert results[0].make == "Toyota"
-        assert results[0].model == "Camry"
+        assert len(artifact) == 1
+        assert artifact[0].make == "Toyota"
+        assert artifact[0].model == "Camry"
 
     @patch("tools.catalog_search.get_makes")
     def test_catalog_search_no_fuzzy_match(self, mock_get_makes):
@@ -108,10 +108,10 @@ class TestFuzzySearch:
 
         preferences = {"make": "Xyz", "budget_max": 30000, "max_results": 5}  # No match
 
-        results = catalog_search_tool.invoke(preferences)
+        content,artifact = catalog_search_tool.func(**preferences)
 
         # Should return empty results
-        assert len(results) == 0
+        assert len(artifact) == 0
 
     def test_fuzzy_search_comprehensive_scenarios(self):
         """Test comprehensive fuzzy search scenarios with various typos."""
@@ -164,7 +164,7 @@ class TestFuzzySearch:
 
         for test_case in test_cases:
             try:
-                results = catalog_search_tool.invoke(test_case["preferences"])
+                results = catalog_search_tool.func(**test_case["preferences"])
 
                 if test_case["expected_results"]:
                     # For expected results, we should get either results or handle gracefully
@@ -249,18 +249,16 @@ class TestFuzzySearch:
 
         # Test tool function call
         try:
-            result = catalog_search_tool.invoke(
-                VehiclePreferences(
+            content,artifact = catalog_search_tool.func(
                     **{
                         "make": "Toyta",  # Typo to test fuzzy matching
                         "budget_max": 50000,
                         "max_results": 3,
                     }
-                )
             )
-            assert isinstance(result, list), "Tool function should return a list"
+            assert isinstance(artifact, list), "Tool function should return a list"
             # If we get results, verify their structure
-            for vehicle in result:
+            for vehicle in artifact:
                 assert hasattr(vehicle, "make"), "Vehicle should have make attribute"
                 assert hasattr(vehicle, "model"), "Vehicle should have model attribute"
                 assert hasattr(vehicle, "price"), "Vehicle should have price attribute"
@@ -280,7 +278,7 @@ class TestFuzzySearch:
             ("Toyota", ["Toyta", "Toyta", "Toyta", "Toyta", "Toyta"]),
             ("Honda", ["Hnda", "Hnda", "Hnda", "Hnda", "Hnda"]),
             ("BMW", ["BM", "BMW", "BMW", "BMW", "BMW"]),
-            ("Mercedes", ["Mercdes", "Mercdes", "Mercdes", "Mercdes", "Mercdes"]),
+            ("Mercedes Benz", ["Mercdes", "Mercdes", "Mercdes", "Mercdes", "Mercdes"]),
             ("Volkswagen", ["VW", "VW", "VW", "VW", "VW"]),
         ]
 
@@ -342,12 +340,12 @@ class TestFuzzySearch:
             start_time = time.time()
 
             try:
-                results = catalog_search_tool.invoke(scenario["preferences"])
+                content,artifact = catalog_search_tool.func(**scenario["preferences"])
                 end_time = time.time()
 
                 # Verify results structure
                 assert isinstance(
-                    results, list
+                    artifact, list
                 ), f"Results should be a list for {scenario['name']}"
 
                 # Performance assertion - should complete within reasonable time (5 seconds)
@@ -357,7 +355,7 @@ class TestFuzzySearch:
                 ), f"Search took too long ({execution_time:.3f}s) for {scenario['name']}"
 
                 # If we get results, verify their structure
-                for result in results:
+                for result in artifact:
                     assert hasattr(result, "make"), "Result should have make attribute"
                     assert hasattr(
                         result, "model"

@@ -36,13 +36,12 @@ class TestDocumentSearchTool:
 
         # Test inputs
         inputs = {"query": "car information", "k": 5}
-        results = document_search_tool.invoke(inputs)
+        content,artifact = document_search_tool.func(**inputs)
 
         # Verify results
-        assert len(results) == 1
-        assert results[0].content == "This is a test document about cars."
-        assert results[0].metadata == {"source": "test.md", "title": "Car Information"}
-        assert results[0].similarity_score is None
+        assert len(artifact) == 1
+        assert artifact[0].page_content == "This is a test document about cars."
+        assert artifact[0].metadata == {"source": "test.md", "title": "Car Information"}
 
     @patch("tools.document_search.RetrievalSystem")
     def test_document_search_with_score(self, mock_retrieval_class):
@@ -58,14 +57,13 @@ class TestDocumentSearchTool:
         mock_retrieval_class.return_value = mock_retrieval_instance
 
         # Test inputs
-        inputs = {"query": "vehicle specifications", "k": 3, "score_threshold": 0.7}
+        inputs = {"query": "vehicle specifications", "k": 3}
 
-        results = document_search_tool.invoke(inputs)
+        content,artifact = document_search_tool.func(**inputs)
 
         # Verify results
-        assert len(results) == 1
-        assert results[0].content == "Vehicle specifications and details."
-        assert results[0].similarity_score == 0.85
+        assert len(artifact) == 1
+        assert artifact[0].page_content == "Vehicle specifications and details."
 
     @patch("tools.document_search.RetrievalSystem")
     def test_document_search_multiple_docs(self, mock_retrieval_class):
@@ -86,17 +84,16 @@ class TestDocumentSearchTool:
         # Test inputs
         inputs = {"query": "vehicle information", "k": 3}
 
-        results = document_search_tool.invoke(inputs)
+        content,artifact = document_search_tool.func(**inputs)
 
         # Verify results
-        assert len(results) == 3
-        for i, result in enumerate(results):
-            assert f"Document {i+1} content" in result.content
-            assert result.similarity_score == 0.8 - i * 0.1
+        assert len(artifact) == 3
+        for i, result in enumerate(artifact):
+            assert f"Document {i+1} content" in result.page_content
 
     @patch("tools.document_search.RetrievalSystem")
-    def test_document_search_no_results(self, mock_retrieval_class):
-        """Test document search with no results."""
+    def test_document_search_no_artifact(self, mock_retrieval_class):
+        """Test document search with no artifact."""
         # Mock empty results
         mock_retrieval_instance = Mock()
         mock_retrieval_instance.query_vector_store.return_value = []
@@ -105,10 +102,10 @@ class TestDocumentSearchTool:
         # Test inputs
         inputs = {"query": "nonexistent topic", "k": 5}
 
-        results = document_search_tool.invoke(inputs)
+        content,artifact = document_search_tool.func(**inputs)
 
         # Verify empty results
-        assert len(results) == 0
+        assert len(artifact) == 0
 
     def test_document_search_input_validation(self):
         """Test input validation for document search."""
@@ -157,8 +154,8 @@ class TestDocumentSearchTool:
         for test_case in test_cases:
             # Test that the function can be called without crashing
             try:
-                results = document_search_tool.invoke(test_case["inputs"])
-                assert isinstance(results, list)
+                content,artifact = document_search_tool.func(**test_case["inputs"])
+                assert isinstance(artifact, list)
                 # Should handle the query gracefully
             except Exception as e:
                 # Should handle errors gracefully
@@ -185,11 +182,11 @@ class TestDocumentSearchTool:
         assert isinstance(document_search_tool.description, str)
         assert len(document_search_tool.description) > 0
         assert document_search_tool.args_schema is not None
-        assert callable(document_search_tool.invoke)
+        assert callable(document_search_tool.func)
 
         # Test direct tool usage
         try:
-            result = document_search_tool.invoke(
+            result = document_search_tool.func(**
                 {"query": "vehicle information", "k": 2}
             )
             assert isinstance(result, list)
@@ -238,12 +235,12 @@ class TestDocumentSearchTool:
             start_time = time.time()
 
             try:
-                results = document_search_tool.invoke(scenario["inputs"])
+                content,artifact = document_search_tool.func(**scenario["inputs"])
                 end_time = time.time()
 
                 # Should complete within reasonable time (5 seconds)
                 assert end_time - start_time < 5.0
-                assert isinstance(results, list)
+                assert isinstance(artifact, list)
 
             except Exception as e:
                 # Should handle errors gracefully
@@ -280,8 +277,8 @@ class TestDocumentSearchTool:
 
         for case in edge_cases:
             try:
-                results = document_search_tool.invoke(case["inputs"])
-                assert isinstance(results, list)
+                content,artifact = document_search_tool.func(**case["inputs"])
+                assert isinstance(artifact, list)
                 # Should handle edge cases gracefully
             except Exception as e:
                 # Should handle errors gracefully
@@ -303,15 +300,15 @@ class TestDocumentSearchTool:
         """Test input validation for edge cases."""
         # Test with None values
         with pytest.raises((ValueError, TypeError, ValidationError)):
-            document_search_tool.invoke({"query": None, "k": 3})
+            document_search_tool.func(**{"query": None, "k": 3})
 
         # Test with invalid types
         with pytest.raises((ValueError, TypeError, ValidationError)):
-            document_search_tool.invoke({"query": 123, "k": "invalid"})
+            document_search_tool.func(**{"query": 123, "k": "invalid"})
 
         # Test with missing required fields
         with pytest.raises((KeyError, TypeError, Exception, ValidationError)):
-            document_search_tool.invoke({"k": 3})  # Missing query
+            document_search_tool.func(**{"k": 3})  # Missing query
 
     def test_document_search_result_structure(self):
         """Test that document search results have correct structure."""
@@ -331,13 +328,12 @@ class TestDocumentSearchTool:
 
             # Test the search
             inputs = {"query": "test query", "k": 2}
-            results = document_search_tool.invoke(inputs)
+            content,artifact = document_search_tool.func(**inputs)
 
             # Verify result structure
-            assert len(results) == 2
-            for result in results:
+            assert len(artifact) == 2
+            for result in artifact:
                 assert hasattr(result, "content")
                 assert hasattr(result, "metadata")
-                assert hasattr(result, "similarity_score")
-                assert isinstance(result.content, str)
+                assert isinstance(result.page_content, str)
                 assert isinstance(result.metadata, dict)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Dict, Any
+from typing import List, Tuple
 
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.retrievers import (
@@ -9,7 +9,6 @@ from langchain_classic.retrievers import (
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
-from langchain_core.language_models import BaseChatModel
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStoreRetriever
@@ -18,20 +17,20 @@ from pydantic import BaseModel, Field
 
 from db.document_loader import DocumentLoader
 
+efficient_model = OpenAIEmbeddings(model="text-embedding-3-small")
+
 
 class RetrievalSystem:
 
     def __init__(
         self,
         data_dir: str,
-        llm: Optional[BaseChatModel] = None,
-        embedding_function=OpenAIEmbeddings(model="text-embedding-3-small"),
+        embedding_function=efficient_model,
     ):
         self._retriever: BaseRetriever = None
         self._bm25_retriever: BM25Retriever = None
         self._ensemble_retriever: EnsembleRetriever = None
         self._vector_store_retriever: VectorStoreRetriever = None
-        self._llm = llm
 
         self.vector_store = None
         self.data_dir = data_dir
@@ -63,7 +62,7 @@ class RetrievalSystem:
     def initialize_retriever(
         self,
         k: int = 6,
-        score_threshold: float | None = 0.6,
+        score_threshold: float | None = None,
         metadata_filter: dict | None = None,
         fetch_k_multiplier: int = 4,
         lambda_mult: float = 0.7,
@@ -99,6 +98,8 @@ class RetrievalSystem:
 
         # Configure retriever with MMR and score threshold
         if score_threshold is not None:
+            # This search method is ideal for tasks requiring highly precise results
+            # such as fact-checking or answering technical queries.
             self._vector_store_retriever = self.vector_store.as_retriever(
                 search_type="similarity_score_threshold",
                 search_kwargs={
@@ -137,16 +138,6 @@ class DocumentSearchInput(BaseModel):
     )
 
 
-class DocumentSearchResult(BaseModel):
-    """Output schema for document search results."""
-
-    content: str = Field(description="Document content")
-    metadata: Dict[str, Any] = Field(description="Document metadata")
-    similarity_score: Optional[float] = Field(
-        description="Similarity score (0-1, higher is better)", ge=0, le=1
-    )
-
-
 @tool(
     "document_search",
     description="""Search for relevant documents using semantic similarity and BM25 retrieval.
@@ -155,7 +146,6 @@ class DocumentSearchResult(BaseModel):
     - Natural language queries
     - Semantic similarity using embeddings
     - BM25 keyword matching
-    - Configurable similarity thresholds
 
     The tool uses a hybrid retrieval approach combining dense vector search
     with sparse keyword matching for comprehensive document discovery.
@@ -163,8 +153,11 @@ class DocumentSearchResult(BaseModel):
     Returns up to 20 documents with relevance scores and metadata.""",
     args_schema=DocumentSearchInput,
     error_on_invalid_docstring=False,
+    return_direct=False,
+    parse_docstring=True,
+    response_format="content_and_artifact",
 )
-def document_search_tool(query: str, k: int = 6) -> List[DocumentSearchResult]:
+def document_search_tool(query: str, k: int = 6) -> Tuple[str, List[Document]]:
     """
     Search for relevant documents using the retrieval system.
 
@@ -182,19 +175,11 @@ def document_search_tool(query: str, k: int = 6) -> List[DocumentSearchResult]:
     # Query the retrieval system
     documents = retrieval_system.query_vector_store(query=query, k=k)
 
-    # Format results
-    results = []
-    for doc in documents:
-        # Extract similarity score if available
-        similarity_score = None
-        if hasattr(doc, "metadata") and "score" in doc.metadata:
-            similarity_score = doc.metadata["score"]
-
-        result = DocumentSearchResult(
-            content=doc.page_content,
-            metadata=doc.metadata or {},
-            similarity_score=similarity_score,
+    def _parse_document_results(docs: List[Document]):
+        return "\n".join(
+            f"<SEPARATOR>\n{doc.page_content}\n</SEPARATOR>" for doc in docs
         )
-        results.append(result)
 
-    return results
+    results_in_text = _parse_document_results(documents)
+
+    return results_in_text, documents

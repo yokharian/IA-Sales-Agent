@@ -13,7 +13,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent))
 
-from src.main import VehicleAssistantAgent
+from src.agent import chat
 
 DEMO_PROMPTS = (
     "¿Qué documentos necesito para comprar un auto en Kavak?",
@@ -28,15 +28,11 @@ DEMO_PROMPTS = (
 )
 
 
-def interactive_chat():
+def interactive_chat(verbose: bool = False):
     """Start an interactive chat session."""
     print("🚗 Vehicle Assistant Agent - Interactive Mode")
     print("=" * 50)
-    print("Type 'quit' to exit, 'help' for available commands")
     print()
-
-    # Create agent
-    agent = VehicleAssistantAgent(verbose=False)
 
     while True:
         try:
@@ -50,15 +46,12 @@ def interactive_chat():
                 continue
 
             print("🤖 Assistant: ", end="", flush=True)
-            result = agent.chat(user_input)
+            result = chat(user_input)
 
             if result["success"]:
-                print(result["response"])
+                print( str(result["response"]))
             else:
-                print(
-                    f"Sorry, I encountered an error: {result.get('error', 'Unknown error')}"
-                )
-
+                print(f"Lo siento, ocurrió un error: {result.get('error', 'Error desconocido')}")
             print()
 
         except KeyboardInterrupt:
@@ -68,7 +61,7 @@ def interactive_chat():
             print(f"Error: {e}")
 
 
-def demo_agent():
+def demo_agent(verbose: bool = False):
     """Demonstrate the agent capabilities."""
     print("🚗 Vehicle Assistant Agent Demo")
     print("=" * 50)
@@ -80,15 +73,13 @@ def demo_agent():
         return  # exit safely
 
     try:
-        # Create agent
-        agent = VehicleAssistantAgent(verbose=True)
 
         # Demo queries
         for i, query in enumerate(DEMO_PROMPTS, 1):
             print(f"\n🔍 Demo {i}: {query}")
             print("-" * 50)
 
-            result = agent.chat(query)
+            result = chat(query)
 
             if result["success"]:
                 print(f"✅ Response: {result['response']}")
@@ -120,6 +111,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == "demo":
-        demo_agent()
+        demo_agent(args.verbose)
     elif args.mode == "interactive":
-        interactive_chat()
+        interactive_chat(args.verbose)

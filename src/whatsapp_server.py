@@ -24,7 +24,7 @@ load_dotenv()
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent))
 
-from main import VehicleAssistantAgent
+from agent import chat
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -55,8 +55,6 @@ class WhatsAppVehicleAssistant:
         except Exception as e:
             logger.error(f"Failed to initialize Twilio client: {e}")
             raise
-
-        self.ai_agent = VehicleAssistantAgent(verbose=False)
 
     def send_whatsapp_message(self, to_number: str, message: str) -> Dict[str, Any]:
         """Send a WhatsApp message using Twilio."""
@@ -113,17 +111,18 @@ class WhatsAppVehicleAssistant:
             logger.error(error_msg)
             return error_msg
 
-    def _handle_with_ai_agent(self, message: str) -> str:
+    @staticmethod
+    def _handle_with_ai_agent(message: str) -> str:
         """Handle message using the AI agent."""
-        result = self.ai_agent.chat(message)
-        if result["success"]:
-            return result["response"]
-        else:
-            return f"Lo siento, ocurrió un error: {result.get('error', 'Error desconocido')}"
-
-
-# Global assistant instance
-assistant = None
+        try:
+            result = chat(message)
+            if result["success"]:
+                return str(result["response"])
+            else:
+                return f"Lo siento, ocurrió un error: {result.get('error', 'Error desconocido')}"
+        
+        except Exception as e:
+            return f"Lo siento, ocurrió un error: {str(e)}"
 
 
 def create_fastapi_app() -> FastAPI:

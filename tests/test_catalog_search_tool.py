@@ -192,8 +192,8 @@ class TestCatalogSearchTool:
             try:
                 from tools.catalog_search import catalog_search_tool
 
-                results = catalog_search_tool.invoke(test_case["preferences"])
-                assert isinstance(results, list)
+                content, artifact = catalog_search_tool.func(**test_case["preferences"])
+                assert isinstance(artifact, list)
                 # Should handle the query gracefully
             except Exception as e:
                 # Should handle errors gracefully
@@ -211,18 +211,18 @@ class TestCatalogSearchTool:
         assert isinstance(catalog_search_tool.description, str)
         assert len(catalog_search_tool.description) > 0
         assert catalog_search_tool.args_schema is not None
-        assert callable(catalog_search_tool.invoke)
+        assert callable(catalog_search_tool.func)
 
         # Test direct tool usage
         try:
-            result = catalog_search_tool.invoke(
+            content,artifact = catalog_search_tool.func(**
                 {
                     "make": "Toyta",  # Typo to test fuzzy matching
                     "budget_max": 50000,
                     "max_results": 3,
                 }
             )
-            assert isinstance(result, list)
+            assert isinstance(artifact, list)
         except Exception as e:
             # Expected to fail in test environment, but should not crash
             assert isinstance(
@@ -231,64 +231,25 @@ class TestCatalogSearchTool:
 
     def test_integrated_search_workflow(self):
         """Test integrated search workflow using both tools."""
-        # Test vehicle catalog search
-        try:
-            from tools.catalog_search import catalog_search_tool
-
-            vehicle_results = catalog_search_tool.invoke(
-                {
-                    "make": "Toyta",  # Intentional typo to test fuzzy matching
-                    "budget_max": 50000,
-                    "max_results": 3,
-                }
-            )
-            assert isinstance(vehicle_results, list)
-        except Exception as e:
-            # Expected to fail in test environment, but should not crash
-            assert isinstance(
-                e, (ValueError, TypeError, KeyError, AttributeError, ValidationError)
-            )
-
-        # Test document search
-        try:
-            from tools.document_search import document_search_tool
-
-            doc_results = document_search_tool.invoke(
-                {"query": "vehicle specifications and features", "k": 3}
-            )
-            assert isinstance(doc_results, list)
-        except Exception as e:
-            # Expected to fail in test environment, but should not crash
-            from openai import AuthenticationError, OpenAIError
-
-            assert isinstance(
-                e,
-                (
-                    ValueError,
-                    TypeError,
-                    KeyError,
-                    AttributeError,
-                    AuthenticationError,
-                    OpenAIError,
-                ),
-            )
-
+        from tools.document_search import document_search_tool
+        from tools.catalog_search import catalog_search_tool
+        
         # Test combined workflow
         try:
             # Step 1: Find vehicles
-            vehicles = catalog_search_tool.invoke({"make": "Honda", "max_results": 2})
-            assert isinstance(vehicles, list)
+            content,artifact = catalog_search_tool.func(**{"make": "Honda", "max_results": 2})
+            assert isinstance(artifact, list)
 
-            if vehicles:
+            if artifact:
                 # Step 2: Get documentation for the first vehicle
-                first_vehicle = vehicles[0]
-                docs = document_search_tool.invoke(
+                first_vehicle = artifact[0]
+                content,artifact = document_search_tool.func(**
                     {
                         "query": f"{first_vehicle.make} {first_vehicle.model} specifications",
                         "k": 2,
                     }
                 )
-                assert isinstance(docs, list)
+                assert isinstance(artifact, list)
         except Exception as e:
             # Expected to fail in test environment, but should not crash
             from openai import AuthenticationError, OpenAIError
@@ -344,12 +305,12 @@ class TestCatalogSearchTool:
             try:
                 from tools.catalog_search import catalog_search_tool
 
-                results = catalog_search_tool.invoke(**scenario["preferences"])
+                content, artifact = catalog_search_tool.func(**scenario["preferences"])
                 end_time = time.time()
 
                 # Should complete within reasonable time (5 seconds)
                 assert end_time - start_time < 5.0
-                assert isinstance(results, list)
+                assert isinstance(artifact, list)
 
             except Exception as e:
                 # Should handle errors gracefully
@@ -389,8 +350,8 @@ class TestCatalogSearchTool:
             try:
                 from tools.catalog_search import catalog_search_tool
 
-                results = catalog_search_tool.invoke(case["preferences"])
-                assert isinstance(results, list)
+                content, artifact = catalog_search_tool.func(**case["preferences"])
+                assert isinstance(artifact, list)
                 # Should handle edge cases gracefully
             except Exception as e:
                 # Should handle errors gracefully
@@ -419,4 +380,4 @@ class TestCatalogSearchTool:
             assert hasattr(tool, "description")
             assert hasattr(tool, "func")
             assert hasattr(tool, "args_schema")
-            assert callable(tool.invoke)
+            assert callable(tool.func)

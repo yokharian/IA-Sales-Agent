@@ -215,3 +215,5 @@ node_modules/
 # tasks.json
 # tasks/ 
 .cursor/
+.deepeval/
+.langgraph_api/

@@ -1,3 +1,6 @@
+langgraph
+agentevals
+deepeval
 sqlalchemy
 langchain-chroma
 pydantic
@@ -15,6 +18,9 @@ tiktoken
 sentence_transformers
 langchain_openai
 pytest
+
+langgraph-cli[inmem]
+
 # Database and CSV processing dependencies
 sqlmodel
 psycopg2-binary

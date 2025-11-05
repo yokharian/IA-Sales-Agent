@@ -28,7 +28,7 @@ class TestCatalogSearchTool:
 
         assert catalog_search_tool.name == "catalog_search"
         assert "vehicle" in catalog_search_tool.description.lower()
-        assert catalog_search_tool.invoke is not None
+        assert catalog_search_tool.func is not None
         assert catalog_search_tool.args_schema is not None
 
     def test_catalog_tool_schema(self):
@@ -66,9 +66,10 @@ class TestCatalogSearchTool:
         inputs = {"make": "Toyota", "max_results": 2}
 
         try:
-            result = catalog_search_tool.invoke(inputs)
-            # Should return a list (even if empty)
-            assert isinstance(result, list)
+            content,artifact = catalog_search_tool.func(**inputs)
+            # Should return a str and list (even if empty)
+            assert isinstance(content, str)
+            assert isinstance(artifact, list)
         except Exception as e:
             # Expected to fail in test environment, but should not crash
             assert isinstance(e, (ValueError, TypeError, KeyError, AttributeError))
@@ -84,7 +85,7 @@ class TestCatalogSearchTool:
 
         for inputs in invalid_inputs:
             try:
-                result = catalog_search_tool.invoke(DocumentSearchInput(**inputs))
+                result = catalog_search_tool.func(**DocumentSearchInput(**inputs))
                 # Should either return results or handle gracefully
                 assert isinstance(result, list)
             except Exception as e:
@@ -104,7 +105,7 @@ class TestDocumentSearchTool:
 
         assert document_search_tool.name == "document_search"
         assert "document" in document_search_tool.description.lower()
-        assert document_search_tool.invoke is not None
+        assert document_search_tool.func is not None
         assert document_search_tool.args_schema is not None
 
     def test_document_tool_schema(self):
@@ -138,7 +139,7 @@ class TestDocumentSearchTool:
         inputs = {"query": "test query", "k": 2}
 
         try:
-            result = document_search_tool.invoke(inputs)
+            result = document_search_tool.func(**inputs)
             # Should return a list (even if empty)
             assert isinstance(result, list)
         except Exception as e:
@@ -160,7 +161,7 @@ class TestDocumentSearchTool:
 
         for inputs in invalid_inputs:
             try:
-                result = document_search_tool.invoke(DocumentSearchInput(**inputs))
+                result = document_search_tool.func(**DocumentSearchInput(**inputs))
                 # Should either return results or handle gracefully
                 assert isinstance(result, list)
             except Exception as e:
@@ -189,7 +190,7 @@ class TestToolIntegration:
             assert len(tool.description) > 0
 
             # Function should be callable
-            assert callable(tool.invoke)
+            assert callable(tool.func)
 
             # Args schema should be a Pydantic model
             assert hasattr(tool.args_schema, "model_fields")
@@ -217,7 +218,7 @@ class TestToolIntegration:
         for tool in [catalog_search_tool, document_search_tool]:
             # Should be able to call the function (even if it fails)
             try:
-                result = tool.invoke(test_input)
+                result = tool.func(**test_input)
                 assert isinstance(result, list)
             except Exception:
                 # Expected to fail in test environment, but should not crash

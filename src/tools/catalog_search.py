@@ -7,7 +7,10 @@ with advanced filtering, fuzzy matching, and structured results.
 
 from __future__ import annotations
 
-from typing import List, Optional, Dict
+import csv
+import io
+import json
+from typing import List, Optional, Dict, Tuple
 
 import rapidfuzz
 from langchain_core.tools import tool
@@ -17,7 +20,7 @@ from db.database import get_session_sync, Vehicle
 from db.vehicle_dao import get_makes, get_models, get_models_by_make, search_vehicles
 
 
-def fuzzy_search_make(make_input: str, threshold: int = 80) -> Optional[str]:
+def fuzzy_search_make(make_input: str, threshold: int = 70) -> Optional[str]:
     """
     Find the best matching make using fuzzy search.
 
@@ -51,7 +54,7 @@ def fuzzy_search_make(make_input: str, threshold: int = 80) -> Optional[str]:
 
 
 def fuzzy_search_model(
-    model_input: str, make: Optional[str] = None, threshold: int = 80
+    model_input: str, make: Optional[str] = None, threshold: int = 70
 ) -> Optional[str]:
     """
     Find the best matching model using fuzzy search.
@@ -149,6 +152,9 @@ class VehicleResult(BaseModel):
     Returns up to 20 vehicles.""",
     args_schema=VehiclePreferences,
     error_on_invalid_docstring=False,
+    return_direct=False,
+    parse_docstring=True,
+    response_format="content_and_artifact",
 )
 def catalog_search_tool(
     budget_min: Optional[float] = None,
@@ -159,7 +165,7 @@ def catalog_search_tool(
     features: Optional[List[str]] = None,
     sort_by: Optional[str] = None,
     max_results: Optional[int] = None,
-) -> List[VehicleResult]:
+) -> Tuple[str, List[Vehicle]]:
     """
     Search the vehicle catalog with filters and fuzzy matching.
 
@@ -184,21 +190,21 @@ def catalog_search_tool(
         matched_make = fuzzy_search_make(make)
         if not matched_make:
             # If no good match found, return empty results
-            return []
+            return "", []
 
         # If model is also provided, do fuzzy search for model within the matched make
         if model:
             matched_model = fuzzy_search_model(model, matched_make)
             if not matched_model:
                 # If no good model match found, return empty results
-                return []
+                return "", []
 
     elif model:
         # If only model is provided, do fuzzy search across all models
         matched_model = fuzzy_search_model(model)
         if not matched_model:
             # If no good match found, return empty results
-            return []
+            return "", []
 
     # Use DAO search_vehicles method for database query
     with get_session_sync() as session:
@@ -229,7 +235,7 @@ def catalog_search_tool(
         candidates: List[Vehicle] = search_vehicles(session, **search_params)
 
     if not candidates:
-        return []
+        return "", []
 
     # Apply additional filters that DAO doesn't support
     filtered_candidates = []
@@ -247,7 +253,7 @@ def catalog_search_tool(
         filtered_candidates.append(vehicle)
 
     if not filtered_candidates:
-        return []
+        return "", []
 
     # Apply sorting
     if sort_by == "price_low":
@@ -259,7 +265,7 @@ def catalog_search_tool(
     elif sort_by == "km_low":
         filtered_candidates.sort(key=lambda x: x.km)
     else:  # 'model' by default
-        filtered_candidates.sort(key=lambda x: x.model, reverse=True)
+        filtered_candidates.sort(key=lambda x: x.model)
 
     # Format results
     results = []
@@ -276,4 +282,37 @@ def catalog_search_tool(
         )
         results.append(result)
 
-    return results
+    def _parse_vehicle_results(vehicles: List[VehicleResult], exclude=("metadata",)):
+        """Return vehicles as CSV text with columns from VehicleResult schema keys.
+
+        - Includes a header row with schema keys in declared order.
+        - Serializes dict/list fields as JSON.
+        - Converts None values to empty strings.
+        """
+
+        # Determine headers from the VehicleResult schema in declared order
+        headers = list(VehicleResult.model_fields.keys() - exclude)
+
+        # Prepare CSV in-memory
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(headers)
+
+        for v in vehicles:
+            row_dict = v.model_dump(exclude=exclude)
+            row = []
+            for key in headers:
+                value = row_dict.get(key)
+                if value is None:
+                    row.append("")
+                elif isinstance(value, (dict, list)):
+                    row.append(json.dumps(value, ensure_ascii=False))
+                else:
+                    row.append(value)
+            writer.writerow(row)
+
+        return buffer.getvalue().strip()
+
+    results_in_text = _parse_vehicle_results(results)
+
+    return results_in_text, results
